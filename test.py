@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("/home/zak/src/cricket/pinocchio_install/lib")
+
 import numpy as np
 import pinocchio as pin
 import pinocchio.cppadcg as cgpin

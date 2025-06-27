@@ -1,0 +1,6 @@
+/.cache/
+/build/
+/cppadcg_build/
+/cppadcg_install/
+/pinocchio_build/
+/pinocchio_install/
