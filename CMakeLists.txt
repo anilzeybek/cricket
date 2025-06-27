@@ -19,6 +19,7 @@ add_subdirectory(inja)
 find_package(pinocchio REQUIRED)
 
 find_package(Eigen3 REQUIRED)
+find_package(CGAL REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
@@ -53,6 +54,7 @@ target_link_libraries(fk_codegen_example
     ${cppadcg_LIBRARIES}
     pantor::inja
     nlohmann_json::nlohmann_json
+    CGAL::CGAL
 )
 
 # Add compiler definitions

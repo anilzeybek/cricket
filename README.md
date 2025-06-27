@@ -6,7 +6,7 @@
 
 
 
-micromamba create -n cricket -c conda-forge python=3.12 pinocchio cppad eigen
+micromamba create -n cricket -c conda-forge python=3.12 pinocchio cppad eigen cgal
 micromamba remove -f pinocchio
 
 cmake -GNinja -Bcppadcg_build -DCMAKE_PREFIX_PATH=/home/zak/micromamba/envs/cricket/ -DCMAKE_INSTALL_PREFIX=${PWD}/cppadcg_install CppADCodeGen/
