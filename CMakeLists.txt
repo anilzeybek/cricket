@@ -20,6 +20,7 @@ find_package(pinocchio REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 find_package(CGAL REQUIRED)
+find_package(fmt REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
@@ -55,6 +56,7 @@ target_link_libraries(fk_codegen_example
     pantor::inja
     nlohmann_json::nlohmann_json
     CGAL::CGAL
+    fmt::fmt
 )
 
 # Add compiler definitions
