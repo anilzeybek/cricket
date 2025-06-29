@@ -1,28 +1,28 @@
-#include "pinocchio_cppadcg.hpp"
+#include "pinocchio_cppadcg.hh"
 
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/parsers/srdf.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/frames.hpp"
-#include "pinocchio/algorithm/kinematics.hpp"
-#include "pinocchio/algorithm/geometry.hpp"
-#include "pinocchio/multibody/geometry.hpp"
-
-#include <filesystem>
-#include <iostream>
-#include <numeric>
-#include <stdexcept>
-#include <vector>
-
-#include <fmt/core.h>
-#include <nlohmann/json.hpp>
-#include <inja/inja.hpp>
+#include <pinocchio/parsers/urdf.hpp>
+#include <pinocchio/parsers/srdf.hpp>
+#include <pinocchio/algorithm/joint-configuration.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/kinematics.hpp>
+#include <pinocchio/algorithm/geometry.hpp>
+#include <pinocchio/multibody/geometry.hpp>
 
 #include <coal/shape/geometric_shapes.h>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Min_sphere_of_spheres_d.h>
 #include <CGAL/Min_sphere_of_spheres_d_traits_3.h>
+
+#include <fmt/core.h>
+#include <nlohmann/json.hpp>
+#include <inja/inja.hpp>
+
+#include <filesystem>
+#include <iostream>
+#include <numeric>
+#include <stdexcept>
+#include <vector>
 
 #include "lang_gen.hh"
 
@@ -425,10 +425,18 @@ auto trace_sphere_cc_fk(const RobotInfo &info, bool spheres = true, bool boundin
 
 int main(int argc, char **argv)
 {
-    std::ifstream f(argv[1]);
+    std::filesystem::path json_path(argv[1]);
+    auto parent_path = json_path.parent_path();
+
+    if (not std::filesystem::exists(json_path))
+    {
+        throw std::runtime_error(fmt::format("JSON file {} does not exist!", json_path.string()));
+    }
+
+    std::ifstream f(json_path);
     nlohmann::json data = nlohmann::json::parse(f);
 
-    RobotInfo robot(data["urdf"], data["srdf"], data["end_effector"]);
+    RobotInfo robot(parent_path / data["urdf"], parent_path / data["srdf"], data["end_effector"]);
 
     data.update(robot.json());
 
@@ -465,13 +473,17 @@ int main(int argc, char **argv)
     data["link_names"] = link_names;
 
     inja::Environment env;
-    inja::Template ccfk_temp = env.parse_template("./ccfk_template.hh");
-    env.include_template("ccfk", ccfk_temp);
 
-    inja::Template temp = env.parse_template("./fk_template.hh");
-    env.write(temp, data, fmt::format("{}_fk.hh", robot.model.name));
+    for (const auto &subt : data["subtemplates"])
+    {
+        inja::Template temp = env.parse_template(parent_path / subt["template"]);
+        env.include_template(subt["name"], temp);
+    }
 
-    std::ofstream output_file("output.data");
+    inja::Template temp = env.parse_template(parent_path / data["template"]);
+    env.write(temp, data, data["output"]);
+
+    std::ofstream output_file("output.json");
     output_file << data.dump(4); // 4 spaces indentation
     output_file.close();
 

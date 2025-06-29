@@ -3,5 +3,8 @@
     "urdf": "panda/panda_spherized.urdf",
     "srdf": "panda/panda.srdf",
     "end_effector": "panda_grasptarget",
-    "resolution": 32
+    "resolution": 32,
+    "template": "templates/fk_template.hh",
+    "subtemplates": [{"name": "ccfk", "template": "templates/ccfk_template.hh"}],
+    "output": "panda_fk.hh"
 }
