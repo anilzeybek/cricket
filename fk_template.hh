@@ -4,6 +4,24 @@
 #include <vamp/collision/environment.hh>
 #include <vamp/collision/validity.hh>
 
+template <typename DataT>
+inline constexpr auto sin(const DataT &v) -> DataT
+{
+    return v.sin();
+}
+
+template <typename DataT>
+inline constexpr auto cos(const DataT &v) -> DataT
+{
+    return v.cos();
+}
+
+template <typename DataT>
+inline constexpr auto sqrt(const DataT &v) -> DataT
+{
+    return v.sqrt();
+}
+
 // NOLINTBEGIN(*-magic-numbers)
 namespace vamp::robots::{{name}}
 {
@@ -16,15 +34,15 @@ namespace vamp::robots::{{name}}
     using ConfigurationBlock = FloatVector<rake, dimension>;
 
     alignas(Configuration::S::Alignment) constexpr std::array<float, dimension> s_m_a{
-        {{bound_range}}
+        {{join(bound_range, ", ")}}
     };
 
     alignas(Configuration::S::Alignment) constexpr std::array<float, dimension> s_a_a{
-        {{bound_lower}}
+        {{join(bound_lower, ", ")}}
     };
 
     alignas(Configuration::S::Alignment) constexpr std::array<float, dimension> d_m_a{
-        {{bound_descale}}
+        {{join(bound_descale, ", ")}}
     };
 
     const Configuration s_m(s_m_a);
@@ -44,22 +62,20 @@ namespace vamp::robots::{{name}}
     template <std::size_t rake>
     inline void scale_configuration_block(ConfigurationBlock<rake> &q) noexcept
     {
-        {% for index in range(n_q) %}
-        q[{{index}}] = {{ at(bound_lower, index) }} + (q[{{index}}] * {{ at(bound_range, index) }});
+        {% for index in range(n_q) %} q[{{index}}] = {{ at(bound_lower, index) }} + (q[{{index}}] * {{ at(bound_range, index) }});
         {% endfor %}
     }
 
     template <std::size_t rake>
     inline void descale_configuration_block(ConfigurationBlock<rake> & q) noexcept
     {
-        {% for index in range(n_q) %}
-        q[{{index}}] = {{ at(bound_descale, index) }} * (q[{{index}}] - {{ at(bound_lower, index) }});
+        {% for index in range(n_q) %} q[{{index}}] = {{ at(bound_descale, index) }} * (q[{{index}}] - {{ at(bound_lower, index) }});
         {% endfor %}
     }
 
     inline static auto space_measure() noexcept -> float
     {
-        return {{ measure }};
+        return {{measure}};
     }
 
     template <std::size_t rake>
@@ -72,32 +88,128 @@ namespace vamp::robots::{{name}}
     };
 
     template <std::size_t rake>
-    inline void sphere_fk(const ConfigurationBlock<rake> &q, Spheres<rake> &out) noexcept
+    inline void sphere_fk(const ConfigurationBlock<rake> &x, Spheres<rake> &out) noexcept
     {
+        std::array<FloatVector<rake, 1>, {{spherefk_code_vars}}> v;
+        std::array<FloatVector<rake, 1>, {{spherefk_code_output}}> y;
+
+        {{spherefk_code}}
+
+        for (auto i = 0U; i < {{n_spheres}}; ++i)
+        {
+            out.x[i] = y[i * 4 + 0];
+            out.y[i] = y[i * 4 + 1];
+            out.z[i] = y[i * 4 + 2];
+            out.r[i] = y[i * 4 + 3];
+        }
     }
 
     template <std::size_t rake>
-    inline bool interleaved_sphere_fk(
-        const vamp::collision::Environment<FloatVector<rake>> &environment,
-        const ConfigurationBlock<rake> &q) noexcept
+        inline bool interleaved_sphere_fk(
+            const vamp::collision::Environment<FloatVector<rake>> &environment,
+            const ConfigurationBlock<rake> &x) noexcept
     {
+        std::array<FloatVector<rake, 1>, {{ccfk_code_vars}}> v;
+        std::array<FloatVector<rake, 1>, {{ccfk_code_output}}> y;
+
+        {{ccfk_code}}
+
+        {% for i in range(length(links_with_geometry)) %}
+        {% set array_index = length(links_with_geometry) - i - 1 %}
+        {% set link_index = at(links_with_geometry, array_index) %}
+        {% set link_spheres = at(per_link_spheres, link_index) %}
+
+        // {{ at(link_names, link_index) }}
+        if (sphere_environment_in_collision(environment,
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 3]
+                ))
+        {
+            {% for j in range(length(link_spheres)) %}
+            {% set sphere_index = at(link_spheres, j) %}
+            if (sphere_environment_in_collision(environment,
+                                                y[{{ sphere_index }} * 4 + 0],
+                                                y[{{ sphere_index }} * 4 + 1],
+                                                y[{{ sphere_index }} * 4 + 2],
+                                                y[{{ sphere_index }} * 4 + 3]))
+                {
+                    return false;
+                }
+            {% endfor %}
+        }
+
+        {% endfor %}
+
+        {% for i in range(length(allowed_link_pairs)) %}
+        {% set pair = at(allowed_link_pairs, i) %}
+        {% set link_1_index = at(pair, 0) %}
+        {% set link_2_index = at(pair, 1) %}
+        {% set link_1_bs = at(bounding_sphere_index, link_1_index) %}
+        {% set link_2_bs = at(bounding_sphere_index, link_2_index) %}
+        {% set link_1_spheres = at(per_link_spheres, link_1_index) %}
+        {% set link_2_spheres = at(per_link_spheres, link_2_index) %}
+
+        // {{ at(link_names, link_1_index) }} vs. {{ at(link_names, link_2_index) }}
+        if (sphere_sphere_self_collision<decltype(x[0])>(
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 3],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 3]))
+        {
+            {% for j in range(length(link_1_spheres)) %}
+            {% for k in range(length(link_2_spheres)) %}
+
+            {% set sphere_1_index = at(link_1_spheres, j) %}
+            {% set sphere_2_index = at(link_2_spheres, k) %}
+
+            if (sphere_sphere_self_collision<decltype(x[0])>(
+                                                y[{{ sphere_1_index }} * 4 + 0],
+                                                y[{{ sphere_1_index }} * 4 + 1],
+                                                y[{{ sphere_1_index }} * 4 + 2],
+                                                y[{{ sphere_1_index }} * 4 + 3],
+                                                y[{{ sphere_2_index }} * 4 + 0],
+                                                y[{{ sphere_2_index }} * 4 + 1],
+                                                y[{{ sphere_2_index }} * 4 + 2],
+                                                y[{{ sphere_2_index }} * 4 + 3]))
+            {
+                return false;
+            }
+
+            {% endfor %}
+            {% endfor %}
+        }
+        {% endfor %}
+
         return true;
     }
 
     template <std::size_t rake>
-    inline bool interleaved_sphere_fk_attachment(
-        const vamp::collision::Environment<FloatVector<rake>> &environment,
-        const ConfigurationBlock<rake> &q) noexcept
+        inline bool interleaved_sphere_fk_attachment(
+            const vamp::collision::Environment<FloatVector<rake>> &environment,
+            const ConfigurationBlock<rake> &x) noexcept
     {
+        std::array<FloatVector<rake, 1>, {{ccfkee_code_vars}}> v;
+        std::array<FloatVector<rake, 1>, {{ccfkee_code_output}}> y;
+
+        {{ccfkee_code}}
+
+        return true;
     }
 
-    inline auto eefk(const std::array<float, 7> &x) noexcept -> std::array<float, 7>
+    inline auto eefk(const std::array<float, {{n_q}}> &x) noexcept -> std::array<float, 7>
     {
-        float v[{{eefk_code_vars}}];
-        float y[7];
+        std::array<float, {{eefk_code_vars}}> v;
+        std::array<float, 7> y;
+
         {{eefk_code}}
 
-        return std::array<float, 7>(y, y + 7);
+        return y;
     }
 }
 

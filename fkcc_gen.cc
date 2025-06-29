@@ -24,6 +24,8 @@
 #include <CGAL/Min_sphere_of_spheres_d.h>
 #include <CGAL/Min_sphere_of_spheres_d_traits_3.h>
 
+#include "lang_gen.hh"
+
 using namespace pinocchio;
 using namespace CppAD;
 using namespace CppAD::cg;
@@ -41,6 +43,7 @@ struct SphereInfo
     GeomIndex geom_index;
     double radius;
     JointIndex parent_joint;
+    JointIndex parent_frame;
     SE3 relative;
 };
 
@@ -107,7 +110,7 @@ struct RobotInfo
         nlohmann::json json;
         json["name"] = model.name;
         json["n_q"] = nq;
-        json["n_spheres"] = nq;
+        json["n_spheres"] = spheres.size();
         json["bound_lower"] = std::vector<float>(lower_bound.data(), lower_bound.data() + nq);
         json["bound_range"] = std::vector<float>(bound_range.data(), bound_range.data() + nq);
         json["bound_descale"] = std::vector<float>(bound_descale.data(), bound_descale.data() + nq);
@@ -129,6 +132,7 @@ struct RobotInfo
                 info.geom_index = i;
                 info.radius = sphere_ptr->radius;
                 info.parent_joint = geom_obj.parentJoint;
+                info.parent_frame = geom_obj.parentFrame;
                 info.relative = geom_obj.placement;
 
                 spheres.emplace_back(info);
@@ -140,41 +144,51 @@ struct RobotInfo
             }
         }
 
-        for (auto i = 0U; i < model.joints.size(); ++i)
+        std::size_t bs = 0;
+        for (auto i = 0U; i < model.frames.size(); ++i)
         {
             std::vector<SphereInfo> link_info;
+            std::vector<std::size_t> sphere_indices;
             for (const auto &info : spheres)
             {
-                if (info.parent_joint == i)
+                if (info.parent_frame == i)
                 {
                     link_info.emplace_back(info);
+                    sphere_indices.emplace_back(info.geom_index);
                 }
             }
 
-            per_link_spheres.emplace_back(link_info);
+            per_link_spheres.emplace_back(sphere_indices);
 
             if (not link_info.empty())
             {
                 auto sphere = min_sphere_of_spheres(link_info);
 
                 SphereInfo info;
-                info.name = fmt::format("{}_bounding_sphere", model.names[i]);
-                info.geom_index = collision_model.ngeoms + i;
+                info.name = fmt::format("{}_bounding_sphere", model.frames[i].name);
+                info.geom_index = bs;
                 info.radius = sphere[3];
-                info.parent_joint = i;
+                info.parent_joint = link_info[0].parent_joint;
                 info.relative = SE3::Identity();
                 info.relative.translation()[0] = sphere[0];
                 info.relative.translation()[1] = sphere[1];
                 info.relative.translation()[2] = sphere[2];
 
-                bounding_spheres.emplace_back(info);
+                bounding_spheres.emplace(i, info);
+                bounding_sphere_index.emplace_back(bs);
+                links_with_geometry.emplace_back(i);
+                bs++;
+            }
+            else
+            {
+                bounding_sphere_index.emplace_back(0);
             }
         }
     }
 
     auto extract_collision_data() -> void
     {
-        for (FrameIndex i = 0; i < model.frames.size(); ++i)
+        for (auto i = 0U; i < model.frames.size(); ++i)
         {
             if (model.frames[i].type == BODY)
             {
@@ -182,7 +196,7 @@ struct RobotInfo
             }
         }
 
-        for (size_t k = 0; k < collision_model.collisionPairs.size(); ++k)
+        for (auto k = 0U; k < collision_model.collisionPairs.size(); ++k)
         {
             const CollisionPair &cp = collision_model.collisionPairs[k];
 
@@ -198,9 +212,6 @@ struct RobotInfo
             FrameIndex first_idx = std::min(link1_idx, link2_idx);
             FrameIndex second_idx = std::max(link1_idx, link2_idx);
             allowed_link_pairs.insert(std::make_pair(first_idx, second_idx));
-
-            link_collision_map[link1_name].insert(link2_name);
-            link_collision_map[link2_name].insert(link1_name);
         }
     }
 
@@ -214,12 +225,14 @@ struct RobotInfo
     Eigen::VectorXd lower_bound;
 
     std::vector<SphereInfo> spheres;
-    std::vector<std::vector<SphereInfo>> per_link_spheres;
-    std::vector<SphereInfo> bounding_spheres;
+    std::map<std::size_t, SphereInfo> bounding_spheres;
 
     std::map<std::string, FrameIndex> link_name_to_index;
-    std::set<std::pair<FrameIndex, FrameIndex>> allowed_link_pairs;
-    std::map<std::string, std::set<std::string>> link_collision_map;
+
+    std::vector<std::size_t> links_with_geometry;
+    std::vector<std::vector<std::size_t>> per_link_spheres;
+    std::set<std::pair<std::size_t, std::size_t>> allowed_link_pairs;
+    std::vector<std::size_t> bounding_sphere_index;
 };
 
 auto trace_sphere(const SphereInfo &sphere, const ADData &ad_data, ADVectorXs &data, std::size_t index)
@@ -268,7 +281,7 @@ struct Traced
     std::size_t outputs;
 };
 
-auto trace_fk(const RobotInfo &info) -> Traced
+auto trace_sphere_cc_fk(const RobotInfo &info, bool spheres = true, bool bounding_spheres = true, bool fk = true) -> Traced
 {
     auto nq = info.model.nq;
     ADModel ad_model = info.model.cast<ADCG>();
@@ -285,61 +298,41 @@ auto trace_fk(const RobotInfo &info) -> Traced
     forwardKinematics(ad_model, ad_data, ad_q);
     updateFramePlacements(ad_model, ad_data);
 
-    ADVectorXs data(7);
+    std::size_t n_spheres_data = (spheres) ? info.spheres.size() * 4 : 0;
+    std::size_t n_bounding_spheres_data = (bounding_spheres) ? info.bounding_spheres.size() * 4 : 0;
+    std::size_t n_fk_data = (fk) ? 7 : 0;
 
-    trace_frame(
-        info.end_effector_index, ad_data, data, 0);
+    std::size_t n_out = n_spheres_data + n_bounding_spheres_data + n_fk_data;
 
-    // Create the AD function
-    ADFun<CGD> func(ad_q, data);
+    ADVectorXs data(n_out);
 
-    CodeHandler<double> handler;
-    CppAD::vector<CGD> ind_vars(nq);
-    handler.makeVariables(ind_vars);
-
-    CppAD::vector<CGD> result = func.Forward(0, ind_vars);
-
-    LanguageC<double> langC("double");
-    LangCDefaultVariableNameGenerator<double> nameGen;
-
-    std::ostringstream function_code;
-    handler.generateCode(function_code, langC, result, nameGen);
-
-    return Traced{
-        function_code.str(), nameGen.getMaxTemporaryVariableID(), 7};
-}
-
-auto trace_sphere_fk(const RobotInfo &info) -> std::string
-{
-    auto nq = info.model.nq;
-    ADModel ad_model = info.model.cast<ADCG>();
-    ADData ad_data(ad_model);
-
-    ADVectorXs ad_q(nq);
-    for (auto i = 0U; i < nq; ++i)
+    if (spheres)
     {
-        ad_q[i] = ADCG(0.0);
+        for (auto i = 0U; i < info.spheres.size(); ++i)
+        {
+            const auto &sphere = info.spheres[i];
+            trace_sphere(sphere, ad_data, data, sphere.geom_index * 4);
+        }
     }
 
-    Independent(ad_q);
-
-    forwardKinematics(ad_model, ad_data, ad_q);
-    updateFramePlacements(ad_model, ad_data);
-
-    ADVectorXs data((info.bounding_spheres.size() + info.spheres.size()) * 4 + 7);
-
-    for (auto i = 0U; i < info.spheres.size(); ++i)
+    if (bounding_spheres)
     {
-        trace_sphere(info.spheres[i], ad_data, data, i * 4);
+        for (auto i = 0U; i < info.model.frames.size(); ++i)
+        {
+            auto sphere_it = info.bounding_spheres.find(i);
+            if (sphere_it != info.bounding_spheres.end())
+            {
+                const auto &sphere = sphere_it->second;
+                trace_sphere(sphere, ad_data, data, sphere.geom_index * 4 + n_spheres_data);
+            }
+        }
     }
 
-    for (auto i = 0U; i < info.bounding_spheres.size(); ++i)
+    if (fk)
     {
-        trace_sphere(info.bounding_spheres[i], ad_data, data, (i + info.spheres.size()) * 4);
+        trace_frame(
+            info.end_effector_index, ad_data, data, n_spheres_data + n_bounding_spheres_data);
     }
-
-    trace_frame(
-        info.end_effector_index, ad_data, data, (info.bounding_spheres.size() + info.spheres.size()) * 4);
 
     // Create the AD function
     ADFun<CGD> collision_sphere_func(ad_q, data);
@@ -350,13 +343,14 @@ auto trace_sphere_fk(const RobotInfo &info) -> std::string
 
     CppAD::vector<CGD> result = collision_sphere_func.Forward(0, ind_vars);
 
-    LanguageC<double> langC("double");
+    LanguageCCustom<double> langC("double");
     LangCDefaultVariableNameGenerator<double> nameGen;
 
     std::ostringstream function_code;
     handler.generateCode(function_code, langC, result, nameGen);
 
-    return function_code.str();
+    return Traced{
+        function_code.str(), handler.getTemporaryVariableCount(), n_out};
 }
 
 int main(int argc, char **argv)
@@ -367,14 +361,45 @@ int main(int argc, char **argv)
     RobotInfo robot(urdf_file, srdf_file, argv[3]);
 
     auto json = robot.json();
-    auto traced_eefk_code = trace_fk(robot);
+    auto traced_eefk_code = trace_sphere_cc_fk(robot, false, false, true);
+    auto traced_spherefk_code = trace_sphere_cc_fk(robot, true, false, false);
+    auto traced_ccfk_code = trace_sphere_cc_fk(robot, true, true, false);
+    auto traced_ccfkee_code = trace_sphere_cc_fk(robot, true, true, true);
 
     json["eefk_code"] = traced_eefk_code.code;
     json["eefk_code_vars"] = traced_eefk_code.temp_variables;
 
+    json["spherefk_code"] = traced_spherefk_code.code;
+    json["spherefk_code_vars"] = traced_spherefk_code.temp_variables;
+    json["spherefk_code_output"] = traced_spherefk_code.outputs;
+
+    json["ccfk_code"] = traced_ccfk_code.code;
+    json["ccfk_code_vars"] = traced_ccfk_code.temp_variables;
+    json["ccfk_code_output"] = traced_ccfk_code.outputs;
+
+    json["ccfkee_code"] = traced_ccfkee_code.code;
+    json["ccfkee_code_vars"] = traced_ccfkee_code.temp_variables;
+    json["ccfkee_code_output"] = traced_ccfkee_code.outputs;
+
+    json["allowed_link_pairs"] = robot.allowed_link_pairs;
+    json["per_link_spheres"] = robot.per_link_spheres;
+    json["links_with_geometry"] = robot.links_with_geometry;
+    json["bounding_sphere_index"] = robot.bounding_sphere_index;
+
+    std::vector<std::string> link_names;
+    for (auto i = 0U; i < robot.model.frames.size(); ++i)
+    {
+        link_names.emplace_back(robot.model.frames[i].name);
+    }
+    json["link_names"] = link_names;
+
     inja::Environment env;
     inja::Template temp = env.parse_template("./fk_template.hh");
     env.write(temp, json, fmt::format("{}_fk.hh", robot.model.name));
+
+    std::ofstream output_file("output.json");
+    output_file << json.dump(4); // 4 spaces indentation
+    output_file.close();
 
     return 0;
 }
