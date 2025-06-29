@@ -1,0 +1,13 @@
+/.cache/
+/build/
+/cppadcg_build/
+/cppadcg_install/
+/pinocchio_build/
+/pinocchio_install/
+/debug/
+/baxter_fk.hh
+/fetch_fk.hh
+/output.data
+/output.json
+/panda_fk.hh
+/ur5_robotiq85_fk.hh

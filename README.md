@@ -1,3 +1,32 @@
+# New notes
+
+Set up the environment:
+```bash
+micromamba create -n cricket -c conda-forge pinocchio cppad eigen cgal inja nlohmann_json cmake cxx-compiler llvm ninja fmt pkg-config
+micromamba activate cricket
+```
+
+Build and locally install CppADCodeGen:
+```bash
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=cppadcg_install -Bcppadcg_build CppADCodeGen/
+cmake --build cppadcg_build
+cmake --install cppadcg_build
+```
+
+Build script:
+```bash
+cmake -GNinja -Bbuild  -DCMAKE_PREFIX_PATH=cppadcg_install cricket/
+cmake --build build
+```
+
+Run the script.
+Optionally format the code.
+```bash
+./build/fkcc_gen panda.json
+clang-format -i panda_fk.hh
+```
+
+# Old notes
 Compilation notes, needs cleaned.
 
 Create environment with pinocchio, cppad, eigen, and cgal.

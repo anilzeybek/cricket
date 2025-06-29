@@ -1,0 +1,7 @@
+{
+    "name": "Baxter",
+    "urdf": "baxter/baxter_spherized.urdf",
+    "srdf": "baxter/baxter.srdf",
+    "end_effector": "right_gripper",
+    "resolution": 64
+}
