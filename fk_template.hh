@@ -27,6 +27,10 @@ namespace vamp::robots::{{name}}
 {
     static constexpr std::size_t dimension = {{n_q}};
     static constexpr std::size_t n_spheres = {{n_spheres}};
+    static constexpr float min_radius = {{min_radius}};
+    static constexpr float max_radius = {{max_radius}};
+    static constexpr std::array<std::string, dimension> names = {"{{join(joint_names, "\", \"")}}"};
+    static constexpr std::string end_effector = "{{end_effector}}";
 
     using Configuration = FloatVector<dimension>;
 

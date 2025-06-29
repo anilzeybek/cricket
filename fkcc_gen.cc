@@ -41,7 +41,7 @@ struct SphereInfo
 {
     std::string name;
     GeomIndex geom_index;
-    double radius;
+    float radius;
     JointIndex parent_joint;
     JointIndex parent_frame;
     SE3 relative;
@@ -100,6 +100,28 @@ struct RobotInfo
 
         lower_bound = model.lowerPositionLimit;
         upper_bound = model.upperPositionLimit;
+
+        std::vector<std::size_t> dof_to_joint_id(model.nq);
+
+        for (auto joint_id = 1U; joint_id < model.joints.size(); ++joint_id)
+        {
+            const auto &joint = model.joints[joint_id];
+            int start_idx = joint.idx_v();
+            int nq = joint.nq();
+
+            for (int i = 0; i < nq; ++i)
+            {
+                dof_to_joint_id[start_idx + i] = joint_id;
+            }
+        }
+
+        std::vector<std::string> dof_to_joint_name(model.nq);
+        for (auto i = 0U; i < model.nq; ++i)
+        {
+            dof_to_joint_name[i] = model.names[dof_to_joint_id[i]];
+        }
+
+        joint_names = dof_to_joint_name;
     }
 
     auto json() -> nlohmann::json
@@ -117,6 +139,9 @@ struct RobotInfo
         json["measure"] = bound_range.prod();
         json["end_effector"] = end_effector_name;
         json["end_effector_index"] = end_effector_index;
+        json["min_radius"] = min_radius;
+        json["max_radius"] = max_radius;
+        json["joint_names"] = joint_names;
 
         std::size_t end_effector_joint = model.frames[end_effector_index].parentJoint;
 
@@ -167,6 +192,9 @@ struct RobotInfo
                 info.relative = geom_obj.placement;
 
                 spheres.emplace_back(info);
+
+                min_radius = std::min(min_radius, info.radius);
+                max_radius = std::max(max_radius, info.radius);
             }
             else
             {
@@ -255,6 +283,8 @@ struct RobotInfo
     Eigen::VectorXd upper_bound;
     Eigen::VectorXd lower_bound;
 
+    float min_radius{std::numeric_limits<float>::max()};
+    float max_radius{std::numeric_limits<float>::min()};
     std::vector<SphereInfo> spheres;
     std::map<std::size_t, SphereInfo> bounding_spheres;
 
@@ -264,6 +294,7 @@ struct RobotInfo
     std::vector<std::vector<std::size_t>> per_link_spheres;
     std::set<std::pair<std::size_t, std::size_t>> allowed_link_pairs;
     std::vector<std::size_t> bounding_sphere_index;
+    std::vector<std::string> joint_names;
 };
 
 auto trace_sphere(const SphereInfo &sphere, const ADData &ad_data, ADVectorXs &data, std::size_t index)
