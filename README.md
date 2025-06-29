@@ -8,14 +8,14 @@ micromamba activate cricket
 
 Build and locally install CppADCodeGen:
 ```bash
-cmake -GNinja -DCMAKE_INSTALL_PREFIX=cppadcg_install -Bcppadcg_build CppADCodeGen/
-cmake --build cppadcg_build
-cmake --install cppadcg_build
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=build/cppadcg_install -Bbuild/cppadcg CppADCodeGen/
+cmake --build build/cppadcg
+cmake --install build/cppadcg
 ```
 
 Build script:
 ```bash
-cmake -GNinja -Bbuild  -DCMAKE_PREFIX_PATH=cppadcg_install cricket/
+cmake -GNinja -Bbuild  -DCMAKE_PREFIX_PATH=build/cppadcg_install cricket/
 cmake --build build
 ```
 
