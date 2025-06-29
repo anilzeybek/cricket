@@ -199,6 +199,119 @@ namespace vamp::robots::{{name}}
 
         {{ccfkee_code}}
 
+        {% for i in range(length(links_with_geometry)) %}
+        {% set array_index = length(links_with_geometry) - i - 1 %}
+        {% set link_index = at(links_with_geometry, array_index) %}
+        {% set link_spheres = at(per_link_spheres, link_index) %}
+
+        // {{ at(link_names, link_index) }}
+        if (sphere_environment_in_collision(environment,
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ array_index }}) * 4 + 3]
+                ))
+        {
+            {% for j in range(length(link_spheres)) %}
+            {% set sphere_index = at(link_spheres, j) %}
+            if (sphere_environment_in_collision(environment,
+                                                y[{{ sphere_index }} * 4 + 0],
+                                                y[{{ sphere_index }} * 4 + 1],
+                                                y[{{ sphere_index }} * 4 + 2],
+                                                y[{{ sphere_index }} * 4 + 3]))
+                {
+                    return false;
+                }
+            {% endfor %}
+        }
+
+        {% endfor %}
+
+        {% for i in range(length(allowed_link_pairs)) %}
+        {% set pair = at(allowed_link_pairs, i) %}
+        {% set link_1_index = at(pair, 0) %}
+        {% set link_2_index = at(pair, 1) %}
+        {% set link_1_bs = at(bounding_sphere_index, link_1_index) %}
+        {% set link_2_bs = at(bounding_sphere_index, link_2_index) %}
+        {% set link_1_spheres = at(per_link_spheres, link_1_index) %}
+        {% set link_2_spheres = at(per_link_spheres, link_2_index) %}
+
+        // {{ at(link_names, link_1_index) }} vs. {{ at(link_names, link_2_index) }}
+        if (sphere_sphere_self_collision<decltype(x[0])>(
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ link_1_bs }}) * 4 + 3],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 0],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 1],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 2],
+                                            y[({{ n_spheres }} + {{ link_2_bs }}) * 4 + 3]))
+        {
+            {% for j in range(length(link_1_spheres)) %}
+            {% for k in range(length(link_2_spheres)) %}
+
+            {% set sphere_1_index = at(link_1_spheres, j) %}
+            {% set sphere_2_index = at(link_2_spheres, k) %}
+
+            if (sphere_sphere_self_collision<decltype(x[0])>(
+                                                y[{{ sphere_1_index }} * 4 + 0],
+                                                y[{{ sphere_1_index }} * 4 + 1],
+                                                y[{{ sphere_1_index }} * 4 + 2],
+                                                y[{{ sphere_1_index }} * 4 + 3],
+                                                y[{{ sphere_2_index }} * 4 + 0],
+                                                y[{{ sphere_2_index }} * 4 + 1],
+                                                y[{{ sphere_2_index }} * 4 + 2],
+                                                y[{{ sphere_2_index }} * 4 + 3]))
+            {
+                return false;
+            }
+
+            {% endfor %}
+            {% endfor %}
+        }
+
+        {% endfor %}
+
+        // Attaching at {{ end_effector }}
+        set_attachment_pose(environment,
+                            y[{{ccfkee_code_output}} - 7],
+                            y[{{ccfkee_code_output}} - 6],
+                            y[{{ccfkee_code_output}} - 5],
+                            y[{{ccfkee_code_output}} - 4],
+                            y[{{ccfkee_code_output}} - 3],
+                            y[{{ccfkee_code_output}} - 2],
+                            y[{{ccfkee_code_output}} - 1]
+            );
+
+        {% for i in range(length(end_effector_collisions)) %}
+        {% set link_index = at(end_effector_collisions, i) %}
+        {% set link_bs = at(bounding_sphere_index, link_index) %}
+        {% set link_spheres = at(per_link_spheres, link_index) %}
+
+        // Attachment vs. {{ at(link_names, link_index )}}
+        if (attachment_sphere_collision<decltype(q[0])>(
+                environment,
+                y[({{ n_spheres }} + {{ link_bs }}) * 4 + 0],
+                y[({{ n_spheres }} + {{ link_bs }}) * 4 + 1],
+                y[({{ n_spheres }} + {{ link_bs }}) * 4 + 2],
+                y[({{ n_spheres }} + {{ link_bs }}) * 4 + 3]))
+        {
+            {% for j in range(length(link_spheres)) %}
+            {% set sphere_index = at(link_spheres, j) %}
+            if (attachment_sphere_collision<decltype(q[0])>(
+                    environment,
+                    y[{{ sphere_index }} * 4 + 0],
+                    y[{{ sphere_index }} * 4 + 1],
+                    y[{{ sphere_index }} * 4 + 2],
+                    y[{{ sphere_index }} * 4 + 3]))
+                {
+                    return false;
+                }
+            {% endfor %}
+        }
+
+        {% endfor %}
+
         return true;
     }
 

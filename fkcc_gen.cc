@@ -115,6 +115,37 @@ struct RobotInfo
         json["bound_range"] = std::vector<float>(bound_range.data(), bound_range.data() + nq);
         json["bound_descale"] = std::vector<float>(bound_descale.data(), bound_descale.data() + nq);
         json["measure"] = bound_range.prod();
+        json["end_effector"] = end_effector_name;
+        json["end_effector_index"] = end_effector_index;
+
+        std::size_t end_effector_joint = model.frames[end_effector_index].parentJoint;
+
+        std::vector<std::size_t> frames;
+        std::set<std::size_t> end_effector_allowed_collisions;
+        for (auto i = 0U; i < model.frames.size(); ++i)
+        {
+            if (model.frames[i].parentJoint == end_effector_joint)
+            {
+                if (bounding_spheres.find(i) != bounding_spheres.end())
+                {
+                    frames.emplace_back(i);
+                }
+            }
+        }
+
+        for (const auto &[first, second] : allowed_link_pairs)
+        {
+            if (std::find(frames.begin(), frames.end(), first)!= frames.end())
+            {
+                end_effector_allowed_collisions.emplace(second);
+            }
+            if (std::find(frames.begin(), frames.end(), second) != frames.end())
+            {
+                end_effector_allowed_collisions.emplace(first);
+            }
+        }
+
+        json["end_effector_collisions"] = end_effector_allowed_collisions;
 
         return json;
     }
@@ -358,7 +389,7 @@ int main(int argc, char **argv)
     std::filesystem::path urdf_file = argv[1];
     std::filesystem::path srdf_file = argv[2];
 
-    RobotInfo robot(urdf_file, srdf_file, argv[3]);
+    RobotInfo robot(urdf_file, srdf_file, (argc > 2) ? argv[3] : "");
 
     auto json = robot.json();
     auto traced_eefk_code = trace_sphere_cc_fk(robot, false, false, true);
