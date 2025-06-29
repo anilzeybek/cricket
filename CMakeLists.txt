@@ -36,10 +36,10 @@ if(NOT cppadcg_FOUND)
 endif()
 
 # Create the executable
-add_executable(fk_codegen_example fkcc_gen.cc)
+add_executable(fkcc_gen fkcc_gen.cc)
 
 # Set include directories
-target_include_directories(fk_codegen_example PRIVATE
+target_include_directories(fkcc_gen PRIVATE
     ${pinocchio_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
     ${cppad_INCLUDE_DIR}
@@ -47,7 +47,7 @@ target_include_directories(fk_codegen_example PRIVATE
 )
 
 # Link libraries
-target_link_libraries(fk_codegen_example
+target_link_libraries(fkcc_gen
     pinocchio::pinocchio
     pinocchio::pinocchio_cppadcg
     ${Boost_LIBRARIES}
@@ -60,7 +60,7 @@ target_link_libraries(fk_codegen_example
 )
 
 # Add compiler definitions
-target_compile_definitions(fk_codegen_example PRIVATE
+target_compile_definitions(fkcc_gen PRIVATE
     ${pinocchio_CFLAGS_OTHER}
     PINOCCHIO_WITH_CPPADCG
 )
