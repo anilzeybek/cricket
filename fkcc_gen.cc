@@ -78,6 +78,16 @@ struct RobotInfo
         const std::filesystem::path &srdf_file,
         const std::string &end_effector)
     {
+        if (not std::filesystem::exists(urdf_file))
+        {
+            throw std::runtime_error(fmt::format("URDF file {} does not exist!", urdf_file.string()));
+        }
+
+        if (not std::filesystem::exists(srdf_file))
+        {
+            throw std::runtime_error(fmt::format("SRDF file {} does not exist!", srdf_file.string()));
+        }
+
         pinocchio::urdf::buildModel(urdf_file, model);
         pinocchio::urdf::buildGeom(model, urdf_file, COLLISION, collision_model);
 
@@ -130,14 +140,12 @@ struct RobotInfo
         Eigen::VectorXd bound_descale = bound_range.cwiseInverse();
 
         nlohmann::json json;
-        json["name"] = model.name;
         json["n_q"] = nq;
         json["n_spheres"] = spheres.size();
         json["bound_lower"] = std::vector<float>(lower_bound.data(), lower_bound.data() + nq);
         json["bound_range"] = std::vector<float>(bound_range.data(), bound_range.data() + nq);
         json["bound_descale"] = std::vector<float>(bound_descale.data(), bound_descale.data() + nq);
         json["measure"] = bound_range.prod();
-        json["end_effector"] = end_effector_name;
         json["end_effector_index"] = end_effector_index;
         json["min_radius"] = min_radius;
         json["max_radius"] = max_radius;
@@ -417,50 +425,54 @@ auto trace_sphere_cc_fk(const RobotInfo &info, bool spheres = true, bool boundin
 
 int main(int argc, char **argv)
 {
-    std::filesystem::path urdf_file = argv[1];
-    std::filesystem::path srdf_file = argv[2];
+    std::ifstream f(argv[1]);
+    nlohmann::json data = nlohmann::json::parse(f);
 
-    RobotInfo robot(urdf_file, srdf_file, (argc > 2) ? argv[3] : "");
+    RobotInfo robot(data["urdf"], data["srdf"], data["end_effector"]);
 
-    auto json = robot.json();
+    data.update(robot.json());
+
     auto traced_eefk_code = trace_sphere_cc_fk(robot, false, false, true);
     auto traced_spherefk_code = trace_sphere_cc_fk(robot, true, false, false);
     auto traced_ccfk_code = trace_sphere_cc_fk(robot, true, true, false);
     auto traced_ccfkee_code = trace_sphere_cc_fk(robot, true, true, true);
 
-    json["eefk_code"] = traced_eefk_code.code;
-    json["eefk_code_vars"] = traced_eefk_code.temp_variables;
+    data["eefk_code"] = traced_eefk_code.code;
+    data["eefk_code_vars"] = traced_eefk_code.temp_variables;
 
-    json["spherefk_code"] = traced_spherefk_code.code;
-    json["spherefk_code_vars"] = traced_spherefk_code.temp_variables;
-    json["spherefk_code_output"] = traced_spherefk_code.outputs;
+    data["spherefk_code"] = traced_spherefk_code.code;
+    data["spherefk_code_vars"] = traced_spherefk_code.temp_variables;
+    data["spherefk_code_output"] = traced_spherefk_code.outputs;
 
-    json["ccfk_code"] = traced_ccfk_code.code;
-    json["ccfk_code_vars"] = traced_ccfk_code.temp_variables;
-    json["ccfk_code_output"] = traced_ccfk_code.outputs;
+    data["ccfk_code"] = traced_ccfk_code.code;
+    data["ccfk_code_vars"] = traced_ccfk_code.temp_variables;
+    data["ccfk_code_output"] = traced_ccfk_code.outputs;
 
-    json["ccfkee_code"] = traced_ccfkee_code.code;
-    json["ccfkee_code_vars"] = traced_ccfkee_code.temp_variables;
-    json["ccfkee_code_output"] = traced_ccfkee_code.outputs;
+    data["ccfkee_code"] = traced_ccfkee_code.code;
+    data["ccfkee_code_vars"] = traced_ccfkee_code.temp_variables;
+    data["ccfkee_code_output"] = traced_ccfkee_code.outputs;
 
-    json["allowed_link_pairs"] = robot.allowed_link_pairs;
-    json["per_link_spheres"] = robot.per_link_spheres;
-    json["links_with_geometry"] = robot.links_with_geometry;
-    json["bounding_sphere_index"] = robot.bounding_sphere_index;
+    data["allowed_link_pairs"] = robot.allowed_link_pairs;
+    data["per_link_spheres"] = robot.per_link_spheres;
+    data["links_with_geometry"] = robot.links_with_geometry;
+    data["bounding_sphere_index"] = robot.bounding_sphere_index;
 
     std::vector<std::string> link_names;
     for (auto i = 0U; i < robot.model.frames.size(); ++i)
     {
         link_names.emplace_back(robot.model.frames[i].name);
     }
-    json["link_names"] = link_names;
+    data["link_names"] = link_names;
 
     inja::Environment env;
-    inja::Template temp = env.parse_template("./fk_template.hh");
-    env.write(temp, json, fmt::format("{}_fk.hh", robot.model.name));
+    inja::Template ccfk_temp = env.parse_template("./ccfk_template.hh");
+    env.include_template("ccfk", ccfk_temp);
 
-    std::ofstream output_file("output.json");
-    output_file << json.dump(4); // 4 spaces indentation
+    inja::Template temp = env.parse_template("./fk_template.hh");
+    env.write(temp, data, fmt::format("{}_fk.hh", robot.model.name));
+
+    std::ofstream output_file("output.data");
+    output_file << data.dump(4); // 4 spaces indentation
     output_file.close();
 
     return 0;

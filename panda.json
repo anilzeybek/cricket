@@ -1,6 +1,7 @@
 {
-    "urdf": "panda_spherized.urdf",
-    "urdf_single": "panda_spherized_1.urdf",
-    "srdf": "panda.srdf",
-    "ee_frame": "panda_grasptarget"
+    "name": "Panda",
+    "urdf": "panda/panda_spherized.urdf",
+    "srdf": "panda/panda.srdf",
+    "end_effector": "panda_grasptarget",
+    "resolution": 32
 }
