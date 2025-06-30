@@ -97,30 +97,36 @@
 			</geometry>
 			<origin xyz="0 0 0" rpy="0 0 0"></origin>
 		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.06"></sphere>
-			</geometry>
-			<origin xyz="0 0 0.0975" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.06"></sphere>
-			</geometry>
-			<origin xyz="0 0 0.195" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.06"></sphere>
-			</geometry>
-			<origin xyz="0 0 0.2925" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.06"></sphere>
-			</geometry>
-			<origin xyz="0 0 0.39" rpy="0 0 0"></origin>
-		</collision>
+    <collision>
+	    <geometry>
+		    <sphere radius="0.05"></sphere>
+	    </geometry>
+	    <origin xyz="0 0 0.105" rpy="0 0 0"></origin>
+    </collision>
+    <collision>
+	    <geometry>
+		    <sphere radius="0.05"></sphere>
+	    </geometry>
+	    <origin xyz="0 0 0.175" rpy="0 0 0"></origin>
+    </collision>
+    <collision>
+	    <geometry>
+		    <sphere radius="0.05"></sphere>
+	    </geometry>
+	    <origin xyz="0 0 0.245" rpy="0 0 0"></origin>
+    </collision>
+    <collision>
+	    <geometry>
+		    <sphere radius="0.05"></sphere>
+	    </geometry>
+	    <origin xyz="0 0 0.315" rpy="0 0 0"></origin>
+    </collision>
+    <collision>
+	    <geometry>
+		    <sphere radius="0.05"></sphere>
+	    </geometry>
+	    <origin xyz="0 0 0.385" rpy="0 0 0"></origin>
+    </collision>
 		<inertial>
 			<mass value="2.275"></mass>
 			<origin rpy="0 0 0" xyz="0.0 0.0 0.25"></origin>

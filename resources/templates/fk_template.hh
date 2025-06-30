@@ -98,10 +98,66 @@ struct {{name}}
         }
     }
 
+    using Debug = std::pair<std::vector<std::vector<std::string>>, std::vector<std::pair<std::size_t, std::size_t>>>;
+
     template <std::size_t rake>
-    static inline bool fkcc(
-        const vamp::collision::Environment<FloatVector<rake>> &environment,
-        const ConfigurationBlock<rake> &x) noexcept
+        static inline auto fkcc_debug(
+            const vamp::collision::Environment<FloatVector<rake>> &environment,
+            const ConfigurationBlock<rake> &x) noexcept -> Debug
+    {
+        std::array<FloatVector<rake, 1>, {{ccfk_code_vars}}> v;
+        std::array<FloatVector<rake, 1>, {{ccfk_code_output}}> y;
+
+        {{ccfk_code}}
+
+        Debug output;
+
+        {% for i in range(n_spheres) %}
+        output.first.emplace_back(
+            sphere_environment_get_collisions<decltype(x[0])>(
+                environment,
+                y[{{ i * 4 + 0 }}],
+                y[{{ i * 4 + 1 }}],
+                y[{{ i * 4 + 2 }}],
+                y[{{ i * 4 + 3 }}]));
+        {% endfor %}
+
+        {% for i in range(length(allowed_link_pairs)) %}
+        {% set pair = at(allowed_link_pairs, i) %}
+        {% set link_1_index = at(pair, 0) %}
+        {% set link_2_index = at(pair, 1) %}
+        {% set link_1_spheres = at(per_link_spheres, link_1_index) %}
+        {% set link_2_spheres = at(per_link_spheres, link_2_index) %}
+
+        {% for j in range(length(link_1_spheres)) %}
+        {% for k in range(length(link_2_spheres)) %}
+
+        {% set sphere_1_loc = at(link_1_spheres, j) %}
+        {% set sphere_2_loc = at(link_2_spheres, k) %}
+
+        if (sphere_sphere_self_collision<decltype(x[0])>(y[{{ sphere_1_loc * 4 + 0}} ],
+                                                         y[{{ sphere_1_loc * 4 + 1}} ],
+                                                         y[{{ sphere_1_loc * 4 + 2}} ],
+                                                         y[{{ sphere_1_loc * 4 + 3}} ],
+                                                         y[{{ sphere_2_loc * 4 + 0}} ],
+                                                         y[{{ sphere_2_loc * 4 + 1}} ],
+                                                         y[{{ sphere_2_loc * 4 + 2}} ],
+                                                         y[{{ sphere_2_loc * 4 + 3}} ]))
+        {
+            output.second.emplace_back({{ sphere_1_loc }}, {{ sphere_2_loc }});
+        }
+
+        {% endfor %}
+        {% endfor %}
+        {% endfor %}
+
+        return output;
+    }
+
+    template <std::size_t rake>
+        static inline bool fkcc(
+            const vamp::collision::Environment<FloatVector<rake>> &environment,
+            const ConfigurationBlock<rake> &x) noexcept
     {
         std::array<FloatVector<rake, 1>, {{ccfk_code_vars}}> v;
         std::array<FloatVector<rake, 1>, {{ccfk_code_output}}> y;
