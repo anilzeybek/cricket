@@ -13,6 +13,8 @@ struct {{name}}
     static constexpr char* name = "{{lower(name)}}";
     static constexpr std::size_t dimension = {{n_q}};
     static constexpr std::size_t n_spheres = {{n_spheres}};
+    static constexpr float min_radius = {{min_radius}};
+    static constexpr float max_radius = {{max_radius}};
     static constexpr std::size_t resolution = {{resolution}};
 
     static constexpr std::array<std::string_view, dimension> joint_names = {"{{join(joint_names, "\", \"")}}"};
