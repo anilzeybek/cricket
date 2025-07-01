@@ -129,6 +129,13 @@ struct RobotInfo
         json["bounding_sphere_index"] = bounding_sphere_index;
         json["end_effector_collisions"] = get_frames_colliding_end_effector();
 
+        std::vector<std::string> link_names;
+        for (auto i = 0U; i < model.frames.size(); ++i)
+        {
+            link_names.emplace_back(model.frames[i].name);
+        }
+        json["link_names"] = link_names;
+
         return json;
     }
 
@@ -445,13 +452,6 @@ int main(int argc, char **argv)
     data["ccfkee_code"] = traced_ccfkee_code.code;
     data["ccfkee_code_vars"] = traced_ccfkee_code.temp_variables;
     data["ccfkee_code_output"] = traced_ccfkee_code.outputs;
-
-    std::vector<std::string> link_names;
-    for (auto i = 0U; i < robot.model.frames.size(); ++i)
-    {
-        link_names.emplace_back(robot.model.frames[i].name);
-    }
-    data["link_names"] = link_names;
 
     inja::Environment env;
 
