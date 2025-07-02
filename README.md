@@ -23,13 +23,13 @@ cmake --install build/cppadcg
 
 Build cricket:
 ```bash
-cmake -GNinja -Bbuild  -DCMAKE_PREFIX_PATH=build/cppadcg_install cricket/
+cmake -GNinja -Bbuild  -DCMAKE_PREFIX_PATH=build/cppadcg_install .
 cmake --build build
 ```
 
 Run the script.
 ```bash
-./build/fkcc_gen panda.json
+./build/fkcc_gen resources/panda.json
 
 # Optionally format the code
 clang-format -i panda_fk.hh

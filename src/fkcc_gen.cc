@@ -186,6 +186,7 @@ struct RobotInfo
             {
                 end_effector_allowed_collisions.emplace(second);
             }
+
             if (std::find(frames.begin(), frames.end(), second) != frames.end())
             {
                 end_effector_allowed_collisions.emplace(first);
