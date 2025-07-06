@@ -35,6 +35,7 @@ Run the script.
 clang-format -i panda_fk.hh
 ```
 
+
 ## Configuration
 
 The script uses input JSON files that define what robot to load and what template to generate.
@@ -81,3 +82,37 @@ In addition to the specified input fields, the script provides the following out
 - `spherefk_code`, `spherefk_code_vars`, `spherefk_code_output`: C-style code for computing position of all spheres, the number of intermediate variables used, and the number of output variables.
 - `ccfk_code`, `ccfk_code_vars`, `ccfk_code_output`: C-style code for computing position of all spheres and bounding spheres for collision checking, the number of intermediate variables used, and the number of output variables.
 - `ccfkee_code`, `ccfkee_code_vars`, `ccfkee_code_output`: C-style code for computing position of all spheres and bounding spheres for collision checking as well as the position and quaternion for the end-effector, the number of intermediate variables used, and the number of output variables.
+
+
+## Using with VAMP
+
+To generate the required code for VAMP, simply use the provided `fkcc_gen` script with your desired robot configuration, e.g., for the Franka Panda:
+```bash
+./build/fkcc_gen panda.json
+
+# Optionally format the code
+clang-format -i panda_fk.hh
+```
+
+Then, copy this code into the `src/impl/vamp/robots/` folder in VAMP, where the other `<robot>.hh` files are:
+```bash
+# Assuming VAMP is located at ${VAMP_DIR}
+cp panda_fk.hh ${VAMP_DIR}/src/impl/vamp/robots/
+```
+
+Add your robot's name (the `name` field of the configuration JSON) to VAMP's `pyproject.toml`. For the Panda, this would be:
+```
+VAMP_ROBOT_MODULES="panda"
+VAMP_ROBOT_STRUCTS="Panda"
+```
+This is a list that is separated by semicolons (`;`), you can add or remove whatever robots you want.
+
+Recompile VAMP:
+```bash
+pip install -e ${VAMP_DIR}
+```
+
+Test your robot out with `scripts/random_dance.py --robot <robot>`. For the Panda, this would be:
+```bash
+python scripts/random_dance.py --robot panda
+```
