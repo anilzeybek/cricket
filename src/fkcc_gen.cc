@@ -7,6 +7,7 @@
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/geometry.hpp>
 #include <pinocchio/multibody/geometry.hpp>
+#include <pinocchio/collision/collision.hpp>
 
 #include <coal/shape/geometric_shapes.h>
 
@@ -21,6 +22,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
+#include <optional>
 
 #include "lang_gen.hh"
 
@@ -73,7 +75,7 @@ struct RobotInfo
 {
     RobotInfo(
         const std::filesystem::path &urdf_file,
-        const std::filesystem::path &srdf_file,
+        const std::optional<std::filesystem::path> &srdf_file,
         const std::string &end_effector)
     {
         if (not std::filesystem::exists(urdf_file))
@@ -81,19 +83,22 @@ struct RobotInfo
             throw std::runtime_error(fmt::format("URDF file {} does not exist!", urdf_file.string()));
         }
 
-        if (not std::filesystem::exists(srdf_file))
-        {
-            throw std::runtime_error(fmt::format("SRDF file {} does not exist!", srdf_file.string()));
-        }
-
         pinocchio::urdf::buildModel(urdf_file, model);
         pinocchio::urdf::buildGeom(model, urdf_file, COLLISION, collision_model);
 
-        collision_model.addAllCollisionPairs();
-        pinocchio::srdf::removeCollisionPairs(model, collision_model, srdf_file);
+        if (not std::filesystem::exists(*srdf_file))
+        {
+            fmt::print("SRDF file {} does not exist! Guessing collisions...\n", srdf_file->string());
+            guess_self_collisions();
+        }
+        else
+        {
+            collision_model.addAllCollisionPairs();
+            pinocchio::srdf::removeCollisionPairs(model, collision_model, *srdf_file);
+            extract_collision_data();
+        }
 
         extract_spheres();
-        extract_collision_data();
 
         end_effector_name = end_effector;
 
@@ -283,6 +288,50 @@ struct RobotInfo
         }
     }
 
+    auto guess_self_collisions(std::size_t n = 1000000U) -> void
+    {
+        collision_model.addAllCollisionPairs();
+
+        Data data(model);
+        GeometryData collision_data(collision_model);
+
+        allowed_link_pairs.clear();
+
+        for (auto i = 0U; i < n; ++i)
+        {
+            auto q = randomConfiguration(model);
+            computeCollisions(model, data, collision_model, collision_data, q);
+
+            for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
+            {
+                const hpp::fcl::CollisionResult &cr = collision_data.collisionResults[j];
+
+                if (cr.isCollision())
+                {
+                    const CollisionPair &cp = collision_model.collisionPairs[j];
+
+                    const auto &geom1 = collision_model.geometryObjects[cp.first];
+                    const auto &geom2 = collision_model.geometryObjects[cp.second];
+
+                    std::size_t link1_idx = geom1.parentFrame;
+                    std::size_t link2_idx = geom2.parentFrame;
+
+                    FrameIndex first_idx = std::min(link1_idx, link2_idx);
+                    FrameIndex second_idx = std::max(link1_idx, link2_idx);
+                    allowed_link_pairs.insert(std::make_pair(first_idx, second_idx));
+                }
+            }
+        }
+
+        collision_model.removeAllCollisionPairs();
+
+        for (const auto &pair : allowed_link_pairs)
+        {
+            fmt::print("- {} {}\n", pair.first, pair.second);
+            collision_model.addCollisionPair(CollisionPair(pair.first, pair.second));
+        }
+    }
+
     Model model;
     GeometryModel collision_model;
     std::string end_effector_name;
@@ -431,7 +480,13 @@ int main(int argc, char **argv)
     std::ifstream f(json_path);
     nlohmann::json data = nlohmann::json::parse(f);
 
-    RobotInfo robot(parent_path / data["urdf"], parent_path / data["srdf"], data["end_effector"]);
+    std::optional<std::filesystem::path> srdf_path = {};
+    if (data.contains("srdf"))
+    {
+        srdf_path = parent_path / data["srdf"];
+    }
+
+    RobotInfo robot(parent_path / data["urdf"], srdf_path, data["end_effector"]);
 
     data.update(robot.json());
 
