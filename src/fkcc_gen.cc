@@ -288,12 +288,59 @@ struct RobotInfo
         }
     }
 
+    auto get_adjacent_frames() -> std::set<std::pair<std::size_t, std::size_t>>
+    {
+        std::set<std::pair<std::size_t, std::size_t>> adjacents;
+
+        for (std::size_t i = 0; i < model.frames.size(); ++i)
+        {
+            for (std::size_t j = i + 1; j < model.frames.size(); ++j)
+            {
+                const auto &frame_i = model.frames[i];
+                const auto &frame_j = model.frames[j];
+
+                if (frame_i.parentJoint < model.joints.size() and frame_j.parentJoint < model.joints.size())
+                {
+                    const auto &joint_i = model.joints[frame_i.parentJoint];
+                    const auto &joint_j = model.joints[frame_j.parentJoint];
+
+                    // Check if joints are parent-child related
+                    if (model.parents[frame_i.parentJoint] == frame_j.parentJoint ||
+                        model.parents[frame_j.parentJoint] == frame_i.parentJoint)
+                    {
+                        adjacents.insert({i, j});
+                    }
+                }
+            }
+        }
+
+        return adjacents;
+    }
+
     auto guess_self_collisions(std::size_t n = 1000000U) -> void
     {
         collision_model.addAllCollisionPairs();
 
         Data data(model);
         GeometryData collision_data(collision_model);
+
+        std::set<std::pair<std::size_t, std::size_t>> always_pairs;
+
+        for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
+        {
+            const CollisionPair &cp = collision_model.collisionPairs[j];
+
+            const auto &geom1 = collision_model.geometryObjects[cp.first];
+            const auto &geom2 = collision_model.geometryObjects[cp.second];
+
+            std::size_t link1_idx = geom1.parentFrame;
+            std::size_t link2_idx = geom2.parentFrame;
+
+            FrameIndex first_idx = std::min(link1_idx, link2_idx);
+            FrameIndex second_idx = std::max(link1_idx, link2_idx);
+            auto pair = std::make_pair(first_idx, second_idx);
+            always_pairs.emplace(pair);
+        }
 
         allowed_link_pairs.clear();
 
@@ -306,25 +353,51 @@ struct RobotInfo
             {
                 const hpp::fcl::CollisionResult &cr = collision_data.collisionResults[j];
 
+                const CollisionPair &cp = collision_model.collisionPairs[j];
+
+                const auto &geom1 = collision_model.geometryObjects[cp.first];
+                const auto &geom2 = collision_model.geometryObjects[cp.second];
+
+                std::size_t link1_idx = geom1.parentFrame;
+                std::size_t link2_idx = geom2.parentFrame;
+
+                FrameIndex first_idx = std::min(link1_idx, link2_idx);
+                FrameIndex second_idx = std::max(link1_idx, link2_idx);
+                auto pair = std::make_pair(first_idx, second_idx);
+
                 if (cr.isCollision())
                 {
-                    const CollisionPair &cp = collision_model.collisionPairs[j];
-
-                    const auto &geom1 = collision_model.geometryObjects[cp.first];
-                    const auto &geom2 = collision_model.geometryObjects[cp.second];
-
-                    std::size_t link1_idx = geom1.parentFrame;
-                    std::size_t link2_idx = geom2.parentFrame;
-
-                    FrameIndex first_idx = std::min(link1_idx, link2_idx);
-                    FrameIndex second_idx = std::max(link1_idx, link2_idx);
-                    allowed_link_pairs.insert(std::make_pair(first_idx, second_idx));
+                    allowed_link_pairs.insert(pair);
+                }
+                else
+                {
+                    auto it = always_pairs.find(pair);
+                    if (it != always_pairs.end())
+                    {
+                        always_pairs.erase(it);
+                    }
                 }
             }
         }
 
+        fmt::print("Adjacents");
+        auto adjacents = get_adjacent_frames();
+        for (const auto &pair : adjacents)
+        {
+            fmt::print("- {} {}\n", pair.first, pair.second);
+            allowed_link_pairs.erase(pair);
+        }
+
+        fmt::print("Always in collisions:");
+        for (const auto &pair : always_pairs)
+        {
+            fmt::print("- {} {}\n", pair.first, pair.second);
+            allowed_link_pairs.erase(pair);
+        }
+
         collision_model.removeAllCollisionPairs();
 
+        fmt::print("Collisions:");
         for (const auto &pair : allowed_link_pairs)
         {
             fmt::print("- {} {}\n", pair.first, pair.second);

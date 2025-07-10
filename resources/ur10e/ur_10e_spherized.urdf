@@ -49,49 +49,49 @@
 		</visual>
 		<collision>
 			<geometry>
-				<sphere radius="0.092386"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.6070419690375328 1.428049325942994e-06 0.16623906538414956" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.107354"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="0.00041303096246719795 5.428049325942993e-06 0.17160506538414955" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.104797"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.5168849690375328 3.4280493259429935e-06 0.16899706538414955" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.10311"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.42341096903753284 9.428049325942994e-06 0.17053706538414956" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.111557"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.32826696903753283 1.2428049325942994e-05 0.17244706538414956" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.113496"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.2252829690375328 1.8428049325942992e-05 0.17491006538414955" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.11601"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.1291979690375328 2.6428049325942993e-05 0.17046706538414957" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.1175"></sphere>
+				<sphere radius="0.10"></sphere>
 			</geometry>
 			<origin xyz="-0.02926196903753281 6.4280493259429935e-06 0.17915506538414955" rpy="0 0 0"></origin>
 		</collision>
@@ -694,7 +694,7 @@
 		<child link="shoulder_link"></child>
 		<origin rpy="0 0 0" xyz="0 0 0.1807"></origin>
 		<axis xyz="0 0 1"></axis>
-		<limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.0943951023931953"></limit>
+		<limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.0943951023931953"></limit>
 		<dynamics damping="0" friction="0"></dynamics>
 	</joint>
 	<joint name="shoulder_lift_joint" type="revolute">
@@ -702,7 +702,7 @@
 		<child link="upper_arm_link"></child>
 		<origin rpy="1.570796327 0 0" xyz="0 0 0"></origin>
 		<axis xyz="0 0 1"></axis>
-		<limit effort="330.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="2.0943951023931953"></limit>
+		<limit effort="330.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="2.0943951023931953"></limit>
 		<dynamics damping="0" friction="0"></dynamics>
 	</joint>
 	<joint name="elbow_joint" type="revolute">
@@ -718,7 +718,7 @@
 		<child link="wrist_1_link"></child>
 		<origin rpy="0 0 0" xyz="-0.57155 0 0.17415"></origin>
 		<axis xyz="0 0 1"></axis>
-		<limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"></limit>
+		<limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.141592653589793"></limit>
 		<dynamics damping="0" friction="0"></dynamics>
 	</joint>
 	<joint name="wrist_2_joint" type="revolute">
@@ -726,7 +726,7 @@
 		<child link="wrist_2_link"></child>
 		<origin rpy="1.570796327 0 0" xyz="0 -0.11985 -2.458164590756244e-11"></origin>
 		<axis xyz="0 0 1"></axis>
-		<limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"></limit>
+		<limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.141592653589793"></limit>
 		<dynamics damping="0" friction="0"></dynamics>
 	</joint>
 	<joint name="wrist_3_joint" type="revolute">
@@ -734,7 +734,7 @@
 		<child link="wrist_3_link"></child>
 		<origin rpy="1.570796326589793 3.141592653589793 3.141592653589793" xyz="0 0.11655 -2.390480459346185e-11"></origin>
 		<axis xyz="0 0 1"></axis>
-		<limit effort="54.0" lower="-6.283185307179586" upper="6.283185307179586" velocity="3.141592653589793"></limit>
+		<limit effort="54.0" lower="-3.141592653589793" upper="3.141592653589793" velocity="3.141592653589793"></limit>
 		<dynamics damping="0" friction="0"></dynamics>
 	</joint>
 	<joint name="wrist_3_link-ft_frame" type="fixed">
