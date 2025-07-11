@@ -39,11 +39,10 @@ using ADVectorXs = Eigen::Matrix<ADCG, Eigen::Dynamic, 1>;
 
 struct SphereInfo
 {
-    std::string name;
-    GeomIndex geom_index;
+    std::size_t geom_index;
     float radius;
-    JointIndex parent_joint;
-    JointIndex parent_frame;
+    std::size_t parent_joint;
+    std::size_t parent_frame;
     SE3 relative;
 };
 
@@ -86,9 +85,13 @@ struct RobotInfo
         pinocchio::urdf::buildModel(urdf_file, model);
         pinocchio::urdf::buildGeom(model, urdf_file, COLLISION, collision_model);
 
-        if (not std::filesystem::exists(*srdf_file))
+        if (srdf_file and not std::filesystem::exists(*srdf_file))
         {
-            fmt::print("SRDF file {} does not exist! Guessing collisions...\n", srdf_file->string());
+            throw std::runtime_error(fmt::format("SRDF file () does not exist!", srdf_file->string()));
+        }
+        else if (not srdf_file)
+        {
+            fmt::print("No SRDF file provided, guessing collisions!");
             guess_self_collisions();
         }
         else
@@ -207,11 +210,11 @@ struct RobotInfo
         for (auto i = 0U; i < collision_model.ngeoms; ++i)
         {
             const auto &geom_obj = collision_model.geometryObjects[i];
-            auto sphere_ptr = std::dynamic_pointer_cast<coal::Sphere>(geom_obj.geometry);
+            const auto &sphere_ptr = std::dynamic_pointer_cast<coal::Sphere>(geom_obj.geometry);
+
             if (sphere_ptr)
             {
                 SphereInfo info;
-                info.name = geom_obj.name;
                 info.geom_index = i;
                 info.radius = sphere_ptr->radius;
                 info.parent_joint = geom_obj.parentJoint;
@@ -251,7 +254,6 @@ struct RobotInfo
                 auto sphere = min_sphere_of_spheres(link_info);
 
                 SphereInfo info;
-                info.name = fmt::format("{}_bounding_sphere", model.frames[i].name);
                 info.geom_index = bs;
                 info.radius = sphere[3];
                 info.parent_joint = link_info[0].parent_joint;
@@ -272,40 +274,46 @@ struct RobotInfo
         }
     }
 
+    auto collision_pair_to_frame_pair(const CollisionPair &cp) -> std::pair<std::size_t, std::size_t>
+    {
+        const auto &geom1 = collision_model.geometryObjects[cp.first];
+        const auto &geom2 = collision_model.geometryObjects[cp.second];
+
+        std::size_t link1_idx = geom1.parentFrame;
+        std::size_t link2_idx = geom2.parentFrame;
+
+        return std::make_pair(std::min(link1_idx, link2_idx), std::max(link1_idx, link2_idx));
+    }
+
     auto extract_collision_data() -> void
     {
         for (const auto &cp : collision_model.collisionPairs)
         {
-            const auto &geom1 = collision_model.geometryObjects[cp.first];
-            const auto &geom2 = collision_model.geometryObjects[cp.second];
-
-            std::size_t link1_idx = geom1.parentFrame;
-            std::size_t link2_idx = geom2.parentFrame;
-
-            FrameIndex first_idx = std::min(link1_idx, link2_idx);
-            FrameIndex second_idx = std::max(link1_idx, link2_idx);
-            allowed_link_pairs.insert(std::make_pair(first_idx, second_idx));
+            allowed_link_pairs.insert(collision_pair_to_frame_pair(cp));
         }
     }
 
     auto get_adjacent_frames() -> std::set<std::pair<std::size_t, std::size_t>>
     {
+        const auto nf = model.frames.size();
+        const auto nj = model.joints.size();
+
         std::set<std::pair<std::size_t, std::size_t>> adjacents;
 
-        for (std::size_t i = 0; i < model.frames.size(); ++i)
+        for (auto i = 0U; i < nf; ++i)
         {
-            for (std::size_t j = i + 1; j < model.frames.size(); ++j)
+            for (auto j = i + 1; j < nf; ++j)
             {
                 const auto &frame_i = model.frames[i];
                 const auto &frame_j = model.frames[j];
 
-                if (frame_i.parentJoint < model.joints.size() and frame_j.parentJoint < model.joints.size())
+                if (frame_i.parentJoint < nj and frame_j.parentJoint < nj)
                 {
                     const auto &joint_i = model.joints[frame_i.parentJoint];
                     const auto &joint_j = model.joints[frame_j.parentJoint];
 
                     // Check if joints are parent-child related
-                    if (model.parents[frame_i.parentJoint] == frame_j.parentJoint ||
+                    if (model.parents[frame_i.parentJoint] == frame_j.parentJoint or
                         model.parents[frame_j.parentJoint] == frame_i.parentJoint)
                     {
                         adjacents.insert({i, j});
@@ -328,18 +336,7 @@ struct RobotInfo
 
         for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
         {
-            const CollisionPair &cp = collision_model.collisionPairs[j];
-
-            const auto &geom1 = collision_model.geometryObjects[cp.first];
-            const auto &geom2 = collision_model.geometryObjects[cp.second];
-
-            std::size_t link1_idx = geom1.parentFrame;
-            std::size_t link2_idx = geom2.parentFrame;
-
-            FrameIndex first_idx = std::min(link1_idx, link2_idx);
-            FrameIndex second_idx = std::max(link1_idx, link2_idx);
-            auto pair = std::make_pair(first_idx, second_idx);
-            always_pairs.emplace(pair);
+            always_pairs.emplace(collision_pair_to_frame_pair(collision_model.collisionPairs[j]));
         }
 
         allowed_link_pairs.clear();
@@ -352,18 +349,7 @@ struct RobotInfo
             for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
             {
                 const hpp::fcl::CollisionResult &cr = collision_data.collisionResults[j];
-
-                const CollisionPair &cp = collision_model.collisionPairs[j];
-
-                const auto &geom1 = collision_model.geometryObjects[cp.first];
-                const auto &geom2 = collision_model.geometryObjects[cp.second];
-
-                std::size_t link1_idx = geom1.parentFrame;
-                std::size_t link2_idx = geom2.parentFrame;
-
-                FrameIndex first_idx = std::min(link1_idx, link2_idx);
-                FrameIndex second_idx = std::max(link1_idx, link2_idx);
-                auto pair = std::make_pair(first_idx, second_idx);
+                auto pair = collision_pair_to_frame_pair(collision_model.collisionPairs[j]);
 
                 if (cr.isCollision())
                 {
@@ -380,27 +366,23 @@ struct RobotInfo
             }
         }
 
-        fmt::print("Adjacents");
+        // Remove all adjacent frames
         auto adjacents = get_adjacent_frames();
         for (const auto &pair : adjacents)
         {
-            fmt::print("- {} {}\n", pair.first, pair.second);
             allowed_link_pairs.erase(pair);
         }
 
-        fmt::print("Always in collisions:");
+        // Remove all pairs that never collided
         for (const auto &pair : always_pairs)
         {
-            fmt::print("- {} {}\n", pair.first, pair.second);
             allowed_link_pairs.erase(pair);
         }
 
+        // Add remaining potential collisions
         collision_model.removeAllCollisionPairs();
-
-        fmt::print("Collisions:");
         for (const auto &pair : allowed_link_pairs)
         {
-            fmt::print("- {} {}\n", pair.first, pair.second);
             collision_model.addCollisionPair(CollisionPair(pair.first, pair.second));
         }
     }
