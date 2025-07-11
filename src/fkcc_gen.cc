@@ -348,7 +348,7 @@ struct RobotInfo
 
             for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
             {
-                const hpp::fcl::CollisionResult &cr = collision_data.collisionResults[j];
+                const auto &cr = collision_data.collisionResults[j];
                 auto pair = collision_pair_to_frame_pair(collision_model.collisionPairs[j]);
 
                 if (cr.isCollision())
