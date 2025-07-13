@@ -7,6 +7,7 @@
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/geometry.hpp>
 #include <pinocchio/multibody/geometry.hpp>
+#include <pinocchio/collision/collision.hpp>
 
 #include <coal/shape/geometric_shapes.h>
 
@@ -21,6 +22,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
+#include <optional>
 
 #include "lang_gen.hh"
 
@@ -38,7 +40,6 @@ using ADVectorXs = Eigen::Matrix<ADCG, Eigen::Dynamic, 1>;
 
 struct SphereInfo
 {
-    std::string name;
     std::size_t geom_index;
     float radius;
     std::size_t parent_joint;
@@ -74,7 +75,7 @@ struct RobotInfo
 {
     RobotInfo(
         const std::filesystem::path &urdf_file,
-        const std::filesystem::path &srdf_file,
+        const std::optional<std::filesystem::path> &srdf_file,
         const std::string &end_effector)
     {
         if (not std::filesystem::exists(urdf_file))
@@ -82,19 +83,26 @@ struct RobotInfo
             throw std::runtime_error(fmt::format("URDF file {} does not exist!", urdf_file.string()));
         }
 
-        if (not std::filesystem::exists(srdf_file))
-        {
-            throw std::runtime_error(fmt::format("SRDF file {} does not exist!", srdf_file.string()));
-        }
-
         pinocchio::urdf::buildModel(urdf_file, model);
         pinocchio::urdf::buildGeom(model, urdf_file, COLLISION, collision_model);
 
-        collision_model.addAllCollisionPairs();
-        pinocchio::srdf::removeCollisionPairs(model, collision_model, srdf_file);
+        if (srdf_file and not std::filesystem::exists(*srdf_file))
+        {
+            throw std::runtime_error(fmt::format("SRDF file () does not exist!", srdf_file->string()));
+        }
+        else if (not srdf_file)
+        {
+            fmt::print("No SRDF file provided, guessing collisions!");
+            guess_self_collisions();
+        }
+        else
+        {
+            collision_model.addAllCollisionPairs();
+            pinocchio::srdf::removeCollisionPairs(model, collision_model, *srdf_file);
+            extract_collision_data();
+        }
 
         extract_spheres();
-        extract_collision_data();
 
         end_effector_name = end_effector;
 
@@ -187,6 +195,7 @@ struct RobotInfo
             {
                 end_effector_allowed_collisions.emplace(second);
             }
+
             if (std::find(frames.begin(), frames.end(), second) != frames.end())
             {
                 end_effector_allowed_collisions.emplace(first);
@@ -202,11 +211,11 @@ struct RobotInfo
         for (auto i = 0U; i < collision_model.ngeoms; ++i)
         {
             const auto &geom_obj = collision_model.geometryObjects[i];
-            auto sphere_ptr = std::dynamic_pointer_cast<coal::Sphere>(geom_obj.geometry);
+            const auto &sphere_ptr = std::dynamic_pointer_cast<coal::Sphere>(geom_obj.geometry);
+
             if (sphere_ptr)
             {
                 SphereInfo info;
-                info.name = geom_obj.name;
                 info.geom_index = i;
                 info.radius = sphere_ptr->radius;
                 info.parent_joint = geom_obj.parentJoint;
@@ -246,7 +255,6 @@ struct RobotInfo
                 auto sphere = min_sphere_of_spheres(link_info);
 
                 SphereInfo info;
-                info.name = fmt::format("{}_bounding_sphere", model.frames[i].name);
                 info.geom_index = bs;
                 info.radius = sphere[3];
                 info.parent_joint = link_info[0].parent_joint;
@@ -267,19 +275,116 @@ struct RobotInfo
         }
     }
 
+    auto collision_pair_to_frame_pair(const CollisionPair &cp) -> std::pair<std::size_t, std::size_t>
+    {
+        const auto &geom1 = collision_model.geometryObjects[cp.first];
+        const auto &geom2 = collision_model.geometryObjects[cp.second];
+
+        std::size_t link1_idx = geom1.parentFrame;
+        std::size_t link2_idx = geom2.parentFrame;
+
+        return std::make_pair(std::min(link1_idx, link2_idx), std::max(link1_idx, link2_idx));
+    }
+
     auto extract_collision_data() -> void
     {
         for (const auto &cp : collision_model.collisionPairs)
         {
-            const auto &geom1 = collision_model.geometryObjects[cp.first];
-            const auto &geom2 = collision_model.geometryObjects[cp.second];
+            allowed_link_pairs.insert(collision_pair_to_frame_pair(cp));
+        }
+    }
 
-            std::size_t link1_idx = geom1.parentFrame;
-            std::size_t link2_idx = geom2.parentFrame;
+    auto get_adjacent_frames() -> std::set<std::pair<std::size_t, std::size_t>>
+    {
+        const auto nf = model.frames.size();
+        const auto nj = model.joints.size();
 
-            FrameIndex first_idx = std::min(link1_idx, link2_idx);
-            FrameIndex second_idx = std::max(link1_idx, link2_idx);
-            allowed_link_pairs.insert(std::make_pair(first_idx, second_idx));
+        std::set<std::pair<std::size_t, std::size_t>> adjacents;
+
+        for (auto i = 0U; i < nf; ++i)
+        {
+            for (auto j = i + 1; j < nf; ++j)
+            {
+                const auto &frame_i = model.frames[i];
+                const auto &frame_j = model.frames[j];
+
+                if (frame_i.parentJoint < nj and frame_j.parentJoint < nj)
+                {
+                    const auto &joint_i = model.joints[frame_i.parentJoint];
+                    const auto &joint_j = model.joints[frame_j.parentJoint];
+
+                    // Check if joints are parent-child related
+                    if (model.parents[frame_i.parentJoint] == frame_j.parentJoint or
+                        model.parents[frame_j.parentJoint] == frame_i.parentJoint)
+                    {
+                        adjacents.insert({i, j});
+                    }
+                }
+            }
+        }
+
+        return adjacents;
+    }
+
+    auto guess_self_collisions(std::size_t n = 1000000U) -> void
+    {
+        collision_model.addAllCollisionPairs();
+
+        Data data(model);
+        GeometryData collision_data(collision_model);
+
+        std::set<std::pair<std::size_t, std::size_t>> always_pairs;
+
+        for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
+        {
+            always_pairs.emplace(collision_pair_to_frame_pair(collision_model.collisionPairs[j]));
+        }
+
+        allowed_link_pairs.clear();
+
+        for (auto i = 0U; i < n; ++i)
+        {
+            auto q = randomConfiguration(model);
+            computeCollisions(model, data, collision_model, collision_data, q);
+
+            for (auto j = 0U; j < collision_model.collisionPairs.size(); ++j)
+            {
+                const auto &cr = collision_data.collisionResults[j];
+                auto pair = collision_pair_to_frame_pair(collision_model.collisionPairs[j]);
+
+                if (cr.isCollision())
+                {
+                    allowed_link_pairs.insert(pair);
+                }
+                else
+                {
+                    auto it = always_pairs.find(pair);
+                    if (it != always_pairs.end())
+                    {
+                        always_pairs.erase(it);
+                    }
+                }
+            }
+        }
+
+        // Remove all adjacent frames
+        auto adjacents = get_adjacent_frames();
+        for (const auto &pair : adjacents)
+        {
+            allowed_link_pairs.erase(pair);
+        }
+
+        // Remove all pairs that never collided
+        for (const auto &pair : always_pairs)
+        {
+            allowed_link_pairs.erase(pair);
+        }
+
+        // Add remaining potential collisions
+        collision_model.removeAllCollisionPairs();
+        for (const auto &pair : allowed_link_pairs)
+        {
+            collision_model.addCollisionPair(CollisionPair(pair.first, pair.second));
         }
     }
 
@@ -432,7 +537,13 @@ int main(int argc, char **argv)
     std::ifstream f(json_path);
     nlohmann::json data = nlohmann::json::parse(f);
 
-    RobotInfo robot(parent_path / data["urdf"], parent_path / data["srdf"], data["end_effector"]);
+    std::optional<std::filesystem::path> srdf_path = {};
+    if (data.contains("srdf"))
+    {
+        srdf_path = parent_path / data["srdf"];
+    }
+
+    RobotInfo robot(parent_path / data["urdf"], srdf_path, data["end_effector"]);
 
     data.update(robot.json());
 
