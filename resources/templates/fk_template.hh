@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
 #include <vamp/vector.hh>
 #include <vamp/vector/math.hh>
 #include <vamp/collision/environment.hh>
@@ -236,11 +239,25 @@ struct {{name}}
     static inline auto eefk(const std::array<float, {{n_q}}> &x) noexcept -> std::array<float, 7>
     {
         std::array<float, {{eefk_code_vars}}> v;
-        std::array<float, 7> y;
+        std::array<float, {{eefk_code_output}}> y;
 
         {{eefk_code}}
 
-        return y;
+        std::array<float, 7> out;
+
+        Eigen::Map<Eigen::Matrix3f> R(&y[3]);
+        Eigen::Quaternionf q(R);
+
+        out[0] = y[0];
+        out[1] = y[1];
+        out[2] = y[2];
+
+        out[3] = q.x();
+        out[4] = q.y();
+        out[5] = q.z();
+        out[6] = q.w();
+
+        return out;
     }
 };
 }
