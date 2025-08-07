@@ -2,39 +2,22 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 31babe6..3f6edb3 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -31,7 +31,7 @@ set(LLVM_VERSION "" CACHE STRING "Prefered LLVM and Clang version to be used in
- # ----------------------------------------------------------------------------
- #                      some additional cmake modules
- # ----------------------------------------------------------------------------
--SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-+SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
- 
- # ----------------------------------------------------------------------------
- #                          find dependencies
-@@ -167,18 +167,18 @@ ENDIF()
+@@ -167,18 +167,10 @@ ENDIF()
  # Currently building tests as normal executables
  # ----------------------------------------------------------------------------
  ADD_SUBDIRECTORY(include)
 -ADD_SUBDIRECTORY(example EXCLUDE_FROM_ALL)
-+# ADD_SUBDIRECTORY(example EXCLUDE_FROM_ALL)
  #ADD_SUBDIRECTORY(introduction EXCLUDE_FROM_ALL)
 -ADD_SUBDIRECTORY(speed EXCLUDE_FROM_ALL)
 -ADD_SUBDIRECTORY(python)
 -ADD_SUBDIRECTORY(pkgconfig)
 -ADD_SUBDIRECTORY(doc)
-+# ADD_SUBDIRECTORY(speed EXCLUDE_FROM_ALL)
-+# ADD_SUBDIRECTORY(python)
-+# ADD_SUBDIRECTORY(pkgconfig)
-+# ADD_SUBDIRECTORY(doc)
  
  # enable testing must be called here in order for the target test to be created
 -ENABLE_TESTING()
 -ADD_SUBDIRECTORY(test EXCLUDE_FROM_ALL)
-+# ENABLE_TESTING()
-+# ADD_SUBDIRECTORY(test EXCLUDE_FROM_ALL)
  
  # =============================================================================
  # uninstall procedure
  # =============================================================================
 -ADD_CUSTOM_TARGET(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppadcodegen_uninstall.cmake)
-+# ADD_CUSTOM_TARGET(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppadcodegen_uninstall.cmake)

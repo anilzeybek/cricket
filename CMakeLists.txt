@@ -14,6 +14,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(NOT DEFINED ENV{CPM_SOURCE_CACHE})
+  set(ENV{CPM_SOURCE_CACHE} ${CMAKE_CURRENT_SOURCE_DIR}/.cpm-cache)
+endif()
 include(cmake/CPM.cmake)
 
 # Find required packages
@@ -35,14 +38,13 @@ endif()
 # Setup CppADCG
 CPMAddPackage(
   URI "gh:joaoleal/CppADCodeGen@2.5.0"
-  PATCHES       CppADCodeGen.patch
+  PATCHES CppADCodeGen.patch
   OPTIONS "ENABLE_THREAD_POOL_TESTS Off"
 )
 
-add_subdirectory(CppADCodeGen)
 list(APPEND cppadcg_INCLUDE_DIRS
-  "${CMAKE_CURRENT_SOURCE_DIR}/CppADCodeGen/include"
-  "${CMAKE_CURRENT_BINARY_DIR}/CppADCodeGen/include")
+  "${cppadcg_SOURCE_DIR}/include"
+  "${cppadcg_BINARY_DIR}/include")
 
 # Create the executable
 add_executable(fkcc_gen src/fkcc_gen.cc)

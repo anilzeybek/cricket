@@ -1,4 +1,5 @@
 /.cache/
+/.cpm-cache/
 /build/
 /cppadcg_build/
 /cppadcg_install/
