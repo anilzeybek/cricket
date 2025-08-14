@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(cricket)
+project(cricket
+  LANGUAGES CXX
+)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -35,12 +37,18 @@ find_package(fmt REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem)
 
+# inja may or may not be installed
 find_package(inja QUIET)
 if(NOT inja_FOUND)
   CPMAddPackage(
     URI "gh:pantor/inja@3.4.0"
   )
 endif()
+
+# Add cxxopts
+CPMAddPackage(
+  URI "gh:jarro2783/cxxopts@3.3.1"
+)
 
 # Find CppAD
 find_package(cppad QUIET)
@@ -79,6 +87,7 @@ target_link_libraries(fkcc_gen
     nlohmann_json::nlohmann_json
     CGAL::CGAL
     fmt::fmt
+    cxxopts::cxxopts
 )
 
 # Add compiler definitions
