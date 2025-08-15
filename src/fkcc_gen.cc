@@ -528,11 +528,9 @@ int main(int argc, char **argv)
 {
     cxxopts::Options options(argv[0], "Tracing compiler for forward kinematics and collision checking");
 
-    options
-        .positional_help("[JSON configuration filename]")
-        .show_positional_help();
+    options.positional_help("[JSON configuration filename]").show_positional_help();
 
-    options.add_options()                                                                   //
+    options.add_options()                                                                       //
         ("f,configuration_file", "JSON configuration filename", cxxopts::value<std::string>())  //
         ("o,output_filename", "Output JSON filename", cxxopts::value<std::string>())            //
         ("t,output_template",
@@ -564,8 +562,21 @@ int main(int argc, char **argv)
         throw std::runtime_error(fmt::format("JSON file {} does not exist!", json_path.string()));
     }
 
-    std::ifstream f(json_path);
-    nlohmann::json data = nlohmann::json::parse(f);
+    if (not std::filesystem::exists(json_path))
+    {
+    }
+
+    std::ifstream json_file(json_path);
+    nlohmann::json data;
+
+    try
+    {
+        data = nlohmann::json::parse(json_file);
+    }
+    catch (std::exception &e)
+    {
+        throw std::runtime_error(fmt::format("Failed to parse JSON file! Error: \n{}", e.what()));
+    }
 
     std::optional<std::filesystem::path> srdf_path = {};
     if (data.contains("srdf"))

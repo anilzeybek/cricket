@@ -71,16 +71,21 @@ An example for the Franka Panda is given below:
 }
 ```
 
+For a custom robot, you only need to change the `name`, `urdf`, `srdf`, and `end_effector` fields.
+If your robot does not have an SRDF, then the script will attempt to guess the self-collisions of the robot by randomly sampling one million configurations and seeing what is always in collision and what never collides.
+You may need to increase the collision checking resolution used (`resolution`) if your robot is especially high-dimensional (e.g., for Panda and Fetch 32 is used, for Baxter, 64).
+
 ## Using with VAMP
 
-To generate the required code for VAMP, simply use the provided `fkcc_gen` script with your desired robot configuration, e.g., for the Franka Panda:
+If you have a custom robot, you need to first spherize the robot (that is, convert the URDF collision geometry to only be spheres) either manually or using a tool like [foam](https://github.com/CoMMALab/foam/).
+Then, write your configuration file as described above.
+To then generate the required code for VAMP, simply use the provided `fkcc_gen` script with your desired robot configuration, e.g., for the Franka Panda:
 ```bash
 ./build/fkcc_gen panda.json
 
 # Optionally format the code
 clang-format -i panda_fk.hh
 ```
-If you have a custom robot, you need to first spherize the robot (that is, convert the URDF collision geometry to only be spheres) either manually or using a tool like [foam](https://github.com/CoMMALab/foam/).
 
 Then, copy this code into the `src/impl/vamp/robots/` folder in VAMP, where the other `<robot>.hh` files are:
 ```bash
