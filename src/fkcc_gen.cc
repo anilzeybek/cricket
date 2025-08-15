@@ -77,7 +77,7 @@ struct RobotInfo
     RobotInfo(
         const std::filesystem::path &urdf_file,
         const std::optional<std::filesystem::path> &srdf_file,
-        const std::string &end_effector)
+        const std::optional<std::string> &end_effector)
     {
         if (not std::filesystem::exists(urdf_file))
         {
@@ -93,7 +93,7 @@ struct RobotInfo
         }
         else if (not srdf_file)
         {
-            fmt::print("No SRDF file provided, guessing collisions!");
+            fmt::print("No SRDF file provided, guessing collisions!\n");
             guess_self_collisions();
         }
         else
@@ -105,14 +105,21 @@ struct RobotInfo
 
         extract_spheres();
 
-        end_effector_name = end_effector;
-
-        if (not model.existFrame(end_effector))
+        if (not end_effector)
         {
-            throw std::runtime_error(fmt::format("Invalid EE name {}", end_effector));
+            end_effector_name = model.frames[model.nframes - 1].name;
+            fmt::print("No EE provided, using distal link `{}`.\n", end_effector_name);
+        }
+        else if (not model.existFrame(*end_effector))
+        {
+            throw std::runtime_error(fmt::format("Invalid EE name {}", *end_effector));
+        }
+        else
+        {
+            end_effector_name = *end_effector;
         }
 
-        end_effector_index = model.getFrameId(end_effector);
+        end_effector_index = model.getFrameId(end_effector_name);
     }
 
     auto json() -> nlohmann::json
@@ -129,6 +136,7 @@ struct RobotInfo
         json["bound_range"] = std::vector<float>(bound_range.data(), bound_range.data() + model.nq);
         json["bound_descale"] = std::vector<float>(bound_descale.data(), bound_descale.data() + model.nq);
         json["measure"] = bound_range.prod();
+        json["end_effector"] = end_effector_name;
         json["end_effector_index"] = end_effector_index;
         json["min_radius"] = min_radius;
         json["max_radius"] = max_radius;
@@ -584,7 +592,13 @@ int main(int argc, char **argv)
         srdf_path = parent_path / data["srdf"];
     }
 
-    RobotInfo robot(parent_path / data["urdf"], srdf_path, data["end_effector"]);
+    std::optional<std::string> end_effector_name = {};
+    if (data.contains("end_effector"))
+    {
+        end_effector_name = data["end_effector"];
+    }
+
+    RobotInfo robot(parent_path / data["urdf"], srdf_path, end_effector_name);
 
     data.update(robot.json());
 

@@ -89,23 +89,28 @@ clang-format -i panda_fk.hh
 
 Then, copy this code into the `src/impl/vamp/robots/` folder in VAMP, where the other `<robot>.hh` files are:
 ```bash
-# Assuming VAMP is located at ${VAMP_DIR}
-cp panda_fk.hh ${VAMP_DIR}/src/impl/vamp/robots/
+# Assuming you have cloned the VAMP repo and it is located at ${VAMP_DIR}
+cp panda_fk.hh ${VAMP_DIR}/src/impl/vamp/robots/panda.fk
 ```
-
-Add your robot's name (the `name` field of the configuration JSON) to VAMP's `pyproject.toml`. For the Panda, this would be:
+Add your robot's name (the `name` field of the configuration JSON - note that this cannot have invalid characters for C++ struct names like `-` as it's used as the name of the struct) and the name of the `.hh` file (the `<robot>` part in `<robot>.hh`) to VAMP's `pyproject.toml`.
+For the Panda, this would be:
 ```
 VAMP_ROBOT_MODULES="panda"
 VAMP_ROBOT_STRUCTS="Panda"
 ```
-This is a list that is separated by semicolons (`;`), you can add or remove whatever robots you want.
+The name of the header file goes in `VAMP_ROBOT_MODULES`, and the name of the robot goes into `VAMP_ROBOT_STRUCTS`.
+These are both lists that are separated by semicolons (`;`), you can add or remove whatever robots you want.
+The name of your robot used in VAMP is the name of the header file (e.g., `panda`, or `ur5`); this is the "name" of the robot.
 
-Recompile VAMP:
+Once the header file is added and the name of the robot is added to the TOML, recompile VAMP:
 ```bash
 pip install -e ${VAMP_DIR}
 ```
 
-Test your robot out with `scripts/random_dance.py --robot <robot>`. For the Panda, this would be:
+If you want to visualize your robot with the example scripts in VAMP, you will need to copy your robot's resources to VAMP's `resources/` folder.
+For example, the Panda's URDF is stored in the `panda/` folder as `panda_spherized.urdf`.
+If you've done this, now test your robot out with `scripts/random_dance.py --robot <robot>`.
+For the Panda, this would be:
 ```bash
 python scripts/random_dance.py --robot panda
 ```
