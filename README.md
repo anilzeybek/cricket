@@ -74,8 +74,10 @@ An example for the Franka Panda is given below:
 ```
 
 For a custom robot, you only need to change the `name`, `urdf`, `srdf`, and `end_effector` fields.
-If your robot does not have an SRDF, then the script will attempt to guess the self-collisions of the robot by randomly sampling one million configurations and seeing what is always in collision and what never collides.
-You may need to increase the collision checking resolution used (`resolution`) if your robot is especially high-dimensional (e.g., for Panda and Fetch 32 is used, for Baxter, 64).
+Some notes:
+- If your robot does not have an SRDF, then the script will attempt to guess the self-collisions of the robot by randomly sampling one million configurations and seeing what is always in collision and what never collides. However, this is unreliable and probably should just be done by hand.
+- If you do not provide an end-effector, the last frame in the robot will be used. For serial link manipulators, this is probably the tool frame, but you should set this yourself.
+- You may need to increase the collision checking resolution used (`resolution`) if your robot is especially high-dimensional (e.g., for Panda and Fetch 32 is used, for Baxter, 64).
 
 ## Using with VAMP
 
