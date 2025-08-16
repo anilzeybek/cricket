@@ -1,3 +1,5 @@
+[![Docker Image CI](https://github.com/CoMMALab/cricket/actions/workflows/docker-build.yml/badge.svg)](https://github.com/CoMMALab/cricket/actions/workflows/docker-build.yml)
+
 # Cricket: Tracing Compilation for Spherized Robots
 
 Cricket is a library to trace the forward kinematics of spherized robots (generated through, for example, [`foam`](github.com/CoMMALab/foam/)).
