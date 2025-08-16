@@ -17,13 +17,11 @@ RUN apt-get update && \
       libeigen3-dev \
       libcgal-dev \
       git \
-      patch \
       cmake \
       ninja-build \
       nlohmann-json3-dev \
       build-essential \
-      libfmt-dev \
-      libboost-all-dev
+      libfmt-dev
 
 ENV PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH
 ENV LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH
