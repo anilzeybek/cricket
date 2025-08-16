@@ -35,7 +35,6 @@ find_package(Eigen3 REQUIRED)
 find_package(CGAL REQUIRED)
 find_package(fmt REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system filesystem)
 
 # inja may or may not be installed
 find_package(inja QUIET)
@@ -72,8 +71,6 @@ add_executable(fkcc_gen src/fkcc_gen.cc)
 
 # Set include directories
 target_include_directories(fkcc_gen PRIVATE
-    ${pinocchio_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIRS}
     ${cppad_INCLUDE_DIRS}
     ${cppadcg_INCLUDE_DIRS}
 )
@@ -81,7 +78,7 @@ target_include_directories(fkcc_gen PRIVATE
 # Link libraries
 target_link_libraries(fkcc_gen
     pinocchio::pinocchio
-    ${Boost_LIBRARIES}
+    Eigen3::Eigen
     ${cppad_LIBRARIES}
     pantor::inja
     nlohmann_json::nlohmann_json
@@ -95,6 +92,7 @@ target_compile_definitions(fkcc_gen PRIVATE
     ${pinocchio_CFLAGS_OTHER}
 )
 
+# Install
 include(GNUInstallDirs)
 install(TARGETS fkcc_gen
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
