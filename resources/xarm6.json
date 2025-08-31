@@ -1,0 +1,9 @@
+{
+    "name": "XArm6",
+    "urdf": "xarm6/xarm6_spherized.urdf",
+    "end_effector": "robotiq_140_base_link",
+    "resolution": 32,
+    "template": "templates/fk_template.hh",
+    "subtemplates": [{"name": "ccfk", "template": "templates/ccfk_template.hh"}],
+    "output": "xarm6_fk.hh"
+}
