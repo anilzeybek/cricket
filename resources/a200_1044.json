@@ -3,7 +3,7 @@
     "urdf": "a200_1044/a200_1044_spherized.urdf",
     "srdf": "a200_1044/a200_1044.srdf",
     "end_effector": "link6",
-    "resolution": 32,
+    "resolution": 64,
     "template": "templates/fk_template.hh",
     "subtemplates": [{"name": "ccfk", "template": "templates/ccfk_template.hh"}],
     "output": "a200_1044.hh"

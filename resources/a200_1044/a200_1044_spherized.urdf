@@ -105,31 +105,31 @@
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.211666"></sphere>
+				<sphere radius="0.111666"></sphere>
 			</geometry>
 			<origin xyz="0.332768 0.162671 0.061876" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.195393"></sphere>
+				<sphere radius="0.105393"></sphere>
 			</geometry>
 			<origin xyz="0.391518 -0.131788 0.061875" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.194531"></sphere>
+				<sphere radius="0.104531"></sphere>
 			</geometry>
 			<origin xyz="-0.252086 0.164049 0.17562699999999998" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.195478"></sphere>
+				<sphere radius="0.105478"></sphere>
 			</geometry>
 			<origin xyz="-0.316306 -0.114632 0.17562699999999998" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.19675"></sphere>
+				<sphere radius="0.10675"></sphere>
 			</geometry>
 			<origin xyz="-0.086634 -0.160554 0.17562299999999997" rpy="0 0 0"></origin>
 		</collision>
@@ -268,54 +268,6 @@
 				<mesh filename="meshes/clearpath_platform_description/meshes/a200/attachments/top_plate.dae"></mesh>
 			</geometry>
 		</visual>
-		<collision>
-			<geometry>
-				<sphere radius="0.177347"></sphere>
-			</geometry>
-			<origin xyz="-0.152264 -0.175887 0.0031749999808147553" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.176723"></sphere>
-			</geometry>
-			<origin xyz="-0.169856 0.082784 0.003176999980814755" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.172966"></sphere>
-			</geometry>
-			<origin xyz="0.077627 -0.148534 0.0031709999808147552" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.175337"></sphere>
-			</geometry>
-			<origin xyz="0.30971499999999996 -0.181538 0.0031749999808147553" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.156716"></sphere>
-			</geometry>
-			<origin xyz="0.134507 0.097048 0.0031719999808147554" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.175422"></sphere>
-			</geometry>
-			<origin xyz="0.392025 0.098172 0.003176999980814755" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.174938"></sphere>
-			</geometry>
-			<origin xyz="-0.11289199999999999 0.257199 0.0031759999808147555" rpy="0 0 0"></origin>
-		</collision>
-		<collision>
-			<geometry>
-				<sphere radius="0.173444"></sphere>
-			</geometry>
-			<origin xyz="0.23322299999999999 0.278206 0.0031699999808147555" rpy="0 0 0"></origin>
-		</collision>
 	</link>
 	<link name="top_plate_default_mount"></link>
 	<link name="top_plate_front_mount"></link>
@@ -345,19 +297,19 @@
 		</visual>
 		<collision>
 			<geometry>
-				<sphere radius="0.190061"></sphere>
+				<sphere radius="0.160061"></sphere>
 			</geometry>
 			<origin xyz="-1e-06 -0.190196 0.474214" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.193653"></sphere>
+				<sphere radius="0.163653"></sphere>
 			</geometry>
 			<origin xyz="4e-06 -0.203037 0.15998199999999999" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.190285"></sphere>
+				<sphere radius="0.160285"></sphere>
 			</geometry>
 			<origin xyz="1e-06 0.014664 0.45776" rpy="0 0 0"></origin>
 		</collision>
@@ -517,15 +469,15 @@
 		</visual>
 		<collision>
 			<geometry>
-				<sphere radius="0.08192"></sphere>
+				<sphere radius="0.078856"></sphere>
 			</geometry>
-			<origin xyz="-7.416808827155959e-05 0.01727372168455009 -0.00023006578689655638" rpy="0 0 0"></origin>
+			<origin xyz="5.8726643061886096e-05 0.016893589235530533 -0.0003134464951062496" rpy="0 0 0"></origin>
 		</collision>
 		<collision>
 			<geometry>
-				<sphere radius="0.072604"></sphere>
+				<sphere radius="0.072497"></sphere>
 			</geometry>
-			<origin xyz="-7.316808827155958e-05 -0.0035432783154499096 -0.06717006578689655" rpy="0 0 0"></origin>
+			<origin xyz="-0.0002952733569381139 -0.0035484107644694653 -0.06413644649510625" rpy="0 0 0"></origin>
 		</collision>
 	</link>
 	<link name="link2">
